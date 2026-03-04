@@ -1,0 +1,36 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "ekimina",
+    "Kimina",
+    "riverpod",
+    "lottie",
+    "timeago",
+    "flutterwave",
+    "mockito",
+    "Ibimina",
+    "Kinyarwanda",
+    "Icyongereza",
+    "Igifaransa",
+    "Rwandan",
+    "Rwanda",
+    "MoMo",
+    "Airtel",
+    "cupertino",
+    "syncfusion",
+    "webview",
+    "hive",
+    "dio",
+    "retrofit",
+    "shimmer",
+    "uuid",
+    "rive"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    ".dart_tool",
+    "build",
+    "*.lock"
+  ]
+}
