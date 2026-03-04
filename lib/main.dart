@@ -50,9 +50,13 @@ void main() async {
   ]);
 
   try {
-    await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    logger.i('Firebase initialized successfully');
+    try {
+      await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      logger.i('Firebase initialized successfully');
+    } catch (e) {
+      logger.e('Firebase initialization failed: $e');
+    }
 
     await Hive.initFlutter();
     logger.i('Hive initialized successfully');
@@ -60,13 +64,17 @@ void main() async {
     await RwandaLocation.initialize();
     logger.i('Rwanda Location data loaded');
 
-    await NotificationService().initialize();
-    logger.i('Notification service initialized');
+    try {
+      await NotificationService().initialize();
+      logger.i('Notification service initialized');
 
-    await FCMService.initialize(
-      onMessageTap: (data) => _handleNotificationNavigation(data),
-    );
-    logger.i('FCM service initialized');
+      await FCMService.initialize(
+        onMessageTap: (data) => _handleNotificationNavigation(data),
+      );
+      logger.i('FCM service initialized');
+    } catch (e) {
+      logger.e('Notification/FCM initialization failed: $e');
+    }
 
     runApp(const ProviderScope(child: EKiminaApp()));
   } catch (e, stackTrace) {
