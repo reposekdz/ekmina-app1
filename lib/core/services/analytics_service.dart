@@ -11,7 +11,7 @@ class AnalyticsService {
 
   Future<void> logEvent(String name, {Map<String, dynamic>? parameters}) async {
     try {
-      await _analytics.logEvent(name: name, parameters: parameters);
+      await _analytics.logEvent(name: name, parameters: parameters?.cast<String, Object>());
       _logger.i('Analytics event logged: $name');
     } catch (e) {
       _logger.e('Failed to log analytics event: $e');

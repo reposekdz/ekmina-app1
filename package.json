@@ -1,0 +1,12 @@
+{
+  "name": "ekimina-mobile-web",
+  "version": "1.0.0",
+  "description": "E-Kimina Rwanda - Digital Savings Group Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

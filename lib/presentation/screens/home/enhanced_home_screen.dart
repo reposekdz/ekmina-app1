@@ -33,12 +33,16 @@ class _EnhancedHomeScreenState extends ConsumerState<EnhancedHomeScreen> {
       _userId = user?['id'];
       
       if (_userId != null) {
-        final [dashboard, groups, transactions, wallet] = await Future.wait([
+        final results = await Future.wait([
           _apiClient.get('/dashboard', queryParameters: {'userId': _userId}),
           _apiClient.getGroups(_userId!),
           _apiClient.getTransactions(userId: _userId),
           _apiClient.getWallet(_userId!),
         ]);
+        final dashboard = results[0] as dynamic;
+        final groups = results[1];
+        final transactions = results[2];
+        final wallet = results[3];
 
         if (mounted) {
           setState(() {

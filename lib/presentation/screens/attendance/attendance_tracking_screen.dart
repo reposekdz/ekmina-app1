@@ -258,7 +258,7 @@ class _QRScannerScreen extends StatefulWidget {
   State<_QRScannerScreen> createState() => _QRScannerScreenState();
 }
 
-class _QRScannerScreenState extends State<_QRScannerScreenState> {
+class _QRScannerScreenState extends State<_QRScannerScreen> {
   MobileScannerController controller = MobileScannerController();
 
   @override
