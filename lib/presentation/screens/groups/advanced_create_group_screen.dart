@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../data/remote/api_client.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/rwanda_location.dart';
 
-class AdvancedCreateGroupScreen extends StatefulWidget {
+class AdvancedCreateGroupScreen extends ConsumerStatefulWidget {
   final String userId;
   const AdvancedCreateGroupScreen({super.key, required this.userId});
 
   @override
-  State<AdvancedCreateGroupScreen> createState() => _AdvancedCreateGroupScreenState();
+  ConsumerState<AdvancedCreateGroupScreen> createState() => _AdvancedCreateGroupScreenState();
 }
 
-class _AdvancedCreateGroupScreenState extends State<AdvancedCreateGroupScreen> {
-  final _dio = Dio(BaseOptions(baseUrl: 'http://localhost:3000/api'));
+class _AdvancedCreateGroupScreenState extends ConsumerState<AdvancedCreateGroupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
@@ -20,11 +25,10 @@ class _AdvancedCreateGroupScreenState extends State<AdvancedCreateGroupScreen> {
   final _latePenaltyController = TextEditingController();
   final _loanInterestController = TextEditingController();
   
-  String _province = 'Kigali';
-  String _district = 'Gasabo';
-  String _sector = 'Remera';
-  String _cell = 'Rukiri I';
-  String _village = 'Amahoro';
+  String? _selectedProvince;
+  String? _selectedDistrict;
+  String? _selectedSector;
+  
   String _contributionFreq = 'WEEKLY';
   String _penaltyType = 'FIXED';
   int _collectionDay = 1;
@@ -41,9 +45,10 @@ class _AdvancedCreateGroupScreenState extends State<AdvancedCreateGroupScreen> {
 
   Future<void> _loadWallet() async {
     try {
-      final response = await _dio.get('/wallet', queryParameters: {'userId': widget.userId});
-      if (response.statusCode == 200 && mounted) {
-        setState(() => _walletBalance = response.data['balance'].toDouble());
+      final api = ref.read(apiClientProvider);
+      final response = await api.getWallet(widget.userId);
+      if (mounted) {
+        setState(() => _walletBalance = (response['wallet']?['balance'] ?? 0).toDouble());
       }
     } catch (e) {}
   }
@@ -51,52 +56,123 @@ class _AdvancedCreateGroupScreenState extends State<AdvancedCreateGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Ikimina Group'), elevation: 0),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildFeeNotice(),
-            const SizedBox(height: 20),
-            _buildBasicInfo(),
-            const SizedBox(height: 20),
-            _buildFinancialSettings(),
-            const SizedBox(height: 20),
-            _buildContributionSettings(),
-            const SizedBox(height: 20),
-            _buildPenaltySettings(),
-            const SizedBox(height: 20),
-            _buildLoanSettings(),
-            const SizedBox(height: 20),
-            _buildVisibilitySettings(),
-            const SizedBox(height: 30),
-            _buildCreateButton(),
-          ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppTheme.primaryBlue, Color(0xFF4F46E5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.lightBg,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                      physics: const BouncingScrollPhysics(),
+                      children: [
+                        _buildFeeStatusCard().animate().fadeIn().slideY(begin: 0.1),
+                        const SizedBox(height: 24),
+                        _buildSectionHeader('Ibisobanuro by\'itsinda', LucideIcons.info),
+                        _buildBasicInfoCard(),
+                        const SizedBox(height: 24),
+                        _buildSectionHeader('Aho riherereye', LucideIcons.mapPin),
+                        _buildLocationCard(),
+                        const SizedBox(height: 24),
+                        _buildSectionHeader('Igenamiterere ry\'amafaranga', LucideIcons.banknote),
+                        _buildFinancialCard(),
+                        const SizedBox(height: 24),
+                        _buildSectionHeader('Igihe cyo gutanga', LucideIcons.calendar),
+                        _buildScheduleCard(),
+                        const SizedBox(height: 24),
+                        _buildSectionHeader('Ibihano n\'inguzanyo', LucideIcons.shieldAlert),
+                        _buildRiskCard(),
+                        const SizedBox(height: 24),
+                        _buildSectionHeader('Umutekano', LucideIcons.eye),
+                        _buildVisibilityCard(),
+                        const SizedBox(height: 48),
+                        _buildCreateButton().animate().fadeIn(delay: 400.ms).scale(),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildFeeNotice() {
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 8),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Kurema Itsinda', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text('Tangira Ikimina gishya', style: TextStyle(color: Colors.white70, fontSize: 14)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppTheme.primaryBlue),
+          const SizedBox(width: 10),
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeeStatusCard() {
+    final bool canAfford = _walletBalance >= 2000;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade200),
+        color: canAfford ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: canAfford ? Colors.green.shade100 : Colors.red.shade100),
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: Colors.blue.shade700),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: canAfford ? Colors.green : Colors.red, shape: BoxShape.circle),
+            child: Icon(canAfford ? LucideIcons.check : LucideIcons.alertCircle, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Amafaranga yo gukora itsinda: 2,000 RWF', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900)),
-                const SizedBox(height: 4),
-                Text('Wallet yawe: ${_walletBalance.toStringAsFixed(0)} RWF', style: TextStyle(color: Colors.blue.shade700, fontSize: 12)),
+                const Text('Ikiguzi: 2,000 RWF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('Balance: ${Formatters.formatCurrency(_walletBalance)}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
               ],
             ),
           ),
@@ -105,287 +181,167 @@ class _AdvancedCreateGroupScreenState extends State<AdvancedCreateGroupScreen> {
     );
   }
 
-  Widget _buildBasicInfo() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Amakuru y\'ibanze', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Izina ry\'itsinda *', prefixIcon: Icon(Icons.group)),
-              validator: (v) => v?.isEmpty ?? true ? 'Byasabwa' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _descController,
-              decoration: const InputDecoration(labelText: 'Ibisobanuro', prefixIcon: Icon(Icons.description)),
-              maxLines: 3,
-            ),
-          ],
-        ),
+  Widget _buildBasicInfoCard() {
+    return _buildCard([
+      _buildTextField(_nameController, 'Izina ry\'itsinda *', LucideIcons.users, validator: (v) => v?.isEmpty ?? true ? 'Injiza izina' : null),
+      const SizedBox(height: 16),
+      _buildTextField(_descController, 'Ibisobanuro', LucideIcons.alignLeft, maxLines: 3),
+    ]);
+  }
+
+  Widget _buildLocationCard() {
+    return _buildCard([
+      _buildDropdown('Intara', _selectedProvince, RwandaLocation.getProvinces(), (v) {
+        setState(() {
+          _selectedProvince = v;
+          _selectedDistrict = _selectedSector = null;
+        });
+      }),
+      const SizedBox(height: 12),
+      if (_selectedProvince != null)
+        _buildDropdown('Akarere', _selectedDistrict, RwandaLocation.getDistricts(_selectedProvince!), (v) {
+          setState(() {
+            _selectedDistrict = v;
+            _selectedSector = null;
+          });
+        }),
+      const SizedBox(height: 12),
+      if (_selectedDistrict != null)
+        _buildDropdown('Umurenge', _selectedSector, RwandaLocation.getSectors(_selectedProvince!, _selectedDistrict!), (v) {
+          setState(() => _selectedSector = v);
+        }),
+    ]);
+  }
+
+  Widget _buildFinancialCard() {
+    return _buildCard([
+      _buildTextField(_shareValueController, 'Agaciro k\'umugabane (RWF) *', LucideIcons.coins, keyboard: TextInputType.number),
+      const SizedBox(height: 16),
+      _buildTextField(_joinFeeController, 'Amafaranga yo kwinjira (RWF) *', LucideIcons.wallet, keyboard: TextInputType.number),
+    ]);
+  }
+
+  Widget _buildScheduleCard() {
+    return _buildCard([
+      _buildDropdown('Inshuro yo gutanga', _contributionFreq, ['DAILY', 'WEEKLY', 'MONTHLY'], (v) => setState(() => _contributionFreq = v!)),
+      const SizedBox(height: 12),
+      if (_contributionFreq == 'WEEKLY')
+        _buildDropdown('Umunsi wo gukusanya', _collectionDay.toString(), List.generate(7, (i) => (i + 1).toString()), (v) => setState(() => _collectionDay = int.parse(v!))),
+    ]);
+  }
+
+  Widget _buildRiskCard() {
+    return _buildCard([
+      _buildTextField(_loanInterestController, 'Inyungu ku nguzanyo (%)', LucideIcons.percent, keyboard: TextInputType.number),
+      const SizedBox(height: 16),
+      _buildTextField(_penaltyController, 'Ihano ryo gutinda (RWF)', LucideIcons.alertTriangle, keyboard: TextInputType.number),
+    ]);
+  }
+
+  Widget _buildVisibilityCard() {
+    return _buildCard([
+      SwitchListTile(
+        title: const Text('Itsinda riragaragara', style: TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: const Text('Abandi babona itsinda ryawe riri mu rutonde', style: TextStyle(fontSize: 12)),
+        value: _isPublic,
+        onChanged: (v) => setState(() => _isPublic = v),
+        activeColor: AppTheme.primaryBlue,
+      ),
+    ]);
+  }
+
+  Widget _buildCard(List<Widget> children) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {TextInputType? keyboard, int maxLines = 1, String? Function(String?)? validator}) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboard,
+      maxLines: maxLines,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       ),
     );
   }
 
-  Widget _buildFinancialSettings() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Igenamiterere ry\'amafaranga', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _shareValueController,
-              decoration: const InputDecoration(labelText: 'Agaciro k\'imigabane (RWF) *', prefixIcon: Icon(Icons.money)),
-              keyboardType: TextInputType.number,
-              validator: (v) => v?.isEmpty ?? true ? 'Byasabwa' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _joinFeeController,
-              decoration: const InputDecoration(labelText: 'Amafaranga yo kwinjira (RWF) *', prefixIcon: Icon(Icons.payment)),
-              keyboardType: TextInputType.number,
-              validator: (v) => v?.isEmpty ?? true ? 'Byasabwa' : null,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContributionSettings() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Contribution Schedule', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _contributionFreq,
-              decoration: const InputDecoration(labelText: 'Contribution Frequency', prefixIcon: Icon(Icons.calendar_today)),
-              items: const [
-                DropdownMenuItem(value: 'DAILY', child: Text('Daily')),
-                DropdownMenuItem(value: 'WEEKLY', child: Text('Weekly')),
-                DropdownMenuItem(value: 'BIWEEKLY', child: Text('Bi-Weekly')),
-                DropdownMenuItem(value: 'MONTHLY', child: Text('Monthly')),
-              ],
-              onChanged: (v) => setState(() => _contributionFreq = v!),
-            ),
-            const SizedBox(height: 12),
-            if (_contributionFreq == 'WEEKLY')
-              DropdownButtonFormField<int>(
-                value: _collectionDay,
-                decoration: const InputDecoration(labelText: 'Collection Day', prefixIcon: Icon(Icons.event)),
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('Monday')),
-                  DropdownMenuItem(value: 2, child: Text('Tuesday')),
-                  DropdownMenuItem(value: 3, child: Text('Wednesday')),
-                  DropdownMenuItem(value: 4, child: Text('Thursday')),
-                  DropdownMenuItem(value: 5, child: Text('Friday')),
-                  DropdownMenuItem(value: 6, child: Text('Saturday')),
-                  DropdownMenuItem(value: 7, child: Text('Sunday')),
-                ],
-                onChanged: (v) => setState(() => _collectionDay = v!),
-              ),
-            if (_contributionFreq == 'MONTHLY')
-              DropdownButtonFormField<int>(
-                value: _collectionDay,
-                decoration: const InputDecoration(labelText: 'Collection Day of Month', prefixIcon: Icon(Icons.event)),
-                items: List.generate(28, (i) => DropdownMenuItem(value: i + 1, child: Text('Day ${i + 1}'))),
-                onChanged: (v) => setState(() => _collectionDay = v!),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPenaltySettings() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Penalty Settings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _penaltyType,
-              decoration: const InputDecoration(labelText: 'Penalty Type', prefixIcon: Icon(Icons.warning)),
-              items: const [
-                DropdownMenuItem(value: 'FIXED', child: Text('Fixed Amount')),
-                DropdownMenuItem(value: 'PERCENTAGE', child: Text('Percentage')),
-              ],
-              onChanged: (v) => setState(() => _penaltyType = v!),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _penaltyController,
-              decoration: InputDecoration(
-                labelText: _penaltyType == 'FIXED' ? 'Penalty Amount (RWF)' : 'Penalty Percentage (%)',
-                prefixIcon: const Icon(Icons.money_off),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _latePenaltyController,
-              decoration: const InputDecoration(
-                labelText: 'Late Payment Penalty Rate (% per day)',
-                prefixIcon: Icon(Icons.schedule),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoanSettings() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Loan Settings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _loanInterestController,
-              decoration: const InputDecoration(
-                labelText: 'Loan Interest Rate (%)',
-                prefixIcon: Icon(Icons.percent),
-                helperText: 'Interest charged on loans',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVisibilitySettings() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Group Visibility', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('Public Group'),
-              subtitle: const Text('Allow anyone to discover and join'),
-              value: _isPublic,
-              onChanged: (v) => setState(() => _isPublic = v),
-            ),
-          ],
-        ),
+  Widget _buildDropdown(String label, String? value, List<String> items, ValueChanged<String?> onChanged) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       ),
     );
   }
 
   Widget _buildCreateButton() {
-    return ElevatedButton(
-      onPressed: _loading ? null : _createGroup,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        backgroundColor: const Color(0xFF00A86B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      width: double.infinity,
+      height: 64,
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: AppTheme.primaryBlue.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
       ),
-      child: _loading
+      child: ElevatedButton(
+        onPressed: _loading ? null : _handleCreate,
+        style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent),
+        child: _loading 
           ? const CircularProgressIndicator(color: Colors.white)
-          : const Text('Kora itsinda (Ishyura 2,000 RWF)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          : const Text('KORA ITSINDA (2,000 RWF)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+      ),
     );
   }
 
-  Future<void> _createGroup() async {
+  Future<void> _handleCreate() async {
     if (!_formKey.currentState!.validate()) return;
-
     if (_walletBalance < 2000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Amafaranga ntahagije. Shyiramo byibuze 2,000 RWF'), backgroundColor: Colors.red),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shyiramo amafaranga kuri wallet yawe mbere')));
       return;
     }
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Emeza kwishyura'),
-        content: const Text('2,000 RWF izavamo muri wallet yawe. Komeza?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Oya')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yego, ishyura')),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
     setState(() => _loading = true);
     try {
-      final response = await _dio.post('/groups', data: {
+      final api = ref.read(apiClientProvider);
+      await api.createGroup({
         'name': _nameController.text,
         'description': _descController.text,
-        'province': _province,
-        'district': _district,
-        'sector': _sector,
-        'cell': _cell,
-        'village': _village,
+        'province': _selectedProvince,
+        'district': _selectedDistrict,
+        'sector': _selectedSector,
         'shareValue': double.parse(_shareValueController.text),
         'joinFee': double.parse(_joinFeeController.text),
-        'penaltyAmount': double.parse(_penaltyController.text.isEmpty ? '0' : _penaltyController.text),
-        'penaltyType': _penaltyType,
-        'latePenaltyRate': double.parse(_latePenaltyController.text.isEmpty ? '0' : _latePenaltyController.text),
-        'interestRate': 0,
         'loanInterestRate': double.parse(_loanInterestController.text.isEmpty ? '0' : _loanInterestController.text),
-        'cycleType': 'MONTHLY',
-        'contributionFrequency': _contributionFreq,
-        'collectionDay': _collectionDay,
-        'collectionTime': _collectionTime,
-        'approvalThreshold': 2,
+        'penaltyAmount': double.parse(_penaltyController.text.isEmpty ? '0' : _penaltyController.text),
         'isPublic': _isPublic,
         'creatorId': widget.userId,
       });
-
-      if (response.statusCode == 200 && mounted) {
+      if (mounted) {
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Itsinda ryakozwe neza! 2,000 RWF yavanywe muri wallet.'), backgroundColor: Colors.green),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Itsinda ryakozwe neza!'), backgroundColor: Colors.green));
       }
     } catch (e) {
-      if (mounted) {
-        final errorMsg = e is DioException ? e.response?.data['error'] ?? e.message : e.toString();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMsg ?? 'Ikosa ryabaye'), backgroundColor: Colors.red),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ikosa ryabaye'), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
-    _shareValueController.dispose();
-    _joinFeeController.dispose();
-    _penaltyController.dispose();
-    _latePenaltyController.dispose();
-    _loanInterestController.dispose();
-    super.dispose();
   }
 }
