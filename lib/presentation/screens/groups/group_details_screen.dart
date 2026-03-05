@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/remote/api_client.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../../../core/utils/formatters.dart';
@@ -61,16 +63,26 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Itsinda')),
-        body: const Center(child: CircularProgressIndicator()),
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_groupData == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Ntitubashije kubona itsinda')),
-        body: Center(child: ElevatedButton(onPressed: _loadData, child: const Text('Ongera ugerageze'))),
+        appBar: AppBar(title: const Text('Itsinda')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(LucideIcons.alertTriangle, size: 64, color: Colors.orange),
+              const SizedBox(height: 16),
+              const Text('Ntitubashije kubona itsinda'),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: _loadData, child: const Text('Ongera ugerageze')),
+            ],
+          ),
+        ),
       );
     }
 
@@ -79,60 +91,92 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
     return Scaffold(
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
           _buildSliverAppBar(isFounder),
           SliverToBoxAdapter(
             child: Column(
               children: [
-                _buildQuickStats(),
-                _buildActionGrid(isAdmin),
-                _buildGroupInfo(),
-                const SizedBox(height: 32),
+                _buildQuickStats().animate().fadeIn().slideY(begin: 0.1),
+                _buildActionGrid(isAdmin).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                _buildGroupInfo().animate().fadeIn(delay: 400.ms),
+                const SizedBox(height: 120),
               ],
             ),
           ),
         ],
       ),
-      floatingActionButton: _membershipData != null ? FloatingActionButton.extended(
-        onPressed: () => context.push('/contributions?groupId=${widget.groupId}'),
-        icon: const Icon(Icons.payment),
-        label: const Text('Kwishyura'),
-        backgroundColor: AppTheme.primaryGreen,
-      ) : null,
+      floatingActionButton: _membershipData != null ? Container(
+        decoration: BoxDecoration(
+          gradient: AppTheme.primaryGradient,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryBlue.withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/contributions?groupId=${widget.groupId}'),
+          icon: const Icon(LucideIcons.wallet, color: Colors.white),
+          label: const Text('Tanga Umusanzu', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+      ).animate().scale(delay: 600.ms) : null,
     );
   }
 
   Widget _buildSliverAppBar(bool isFounder) {
     return SliverAppBar(
-      expandedHeight: 200.0,
+      expandedHeight: 240.0,
       floating: false,
       pinned: true,
+      stretch: true,
       actions: [
         if (isFounder)
           IconButton(
-            icon: const Icon(Icons.dashboard_customize),
+            icon: const Icon(LucideIcons.layoutDashboard, color: Colors.white),
             onPressed: () => context.push('/groups/${widget.groupId}/dashboard?userId=$_userId'),
-            tooltip: 'Founder Dashboard',
           ),
-        IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+        IconButton(icon: const Icon(LucideIcons.refreshCw, color: Colors.white), onPressed: _loadData),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(_groupData!['name'],
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white,
-          shadows: [Shadow(color: Colors.black45, blurRadius: 10)])),
+        centerTitle: true,
+        title: Text(
+          _groupData!['name'],
+          style: const TextStyle(
+            fontWeight: FontWeight.bold, 
+            color: Colors.white,
+            fontSize: 18,
+          ),
+        ),
         background: Stack(
           fit: StackFit.expand,
           children: [
             Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withOpacity(0.8)],
-                ),
+              decoration: const BoxDecoration(
+                gradient: AppTheme.primaryGradient,
               ),
             ),
-            const Center(child: Icon(Icons.group, size: 80, color: Colors.white24)),
+            Positioned(
+              right: -50,
+              top: -50,
+              child: CircleAvatar(radius: 120, backgroundColor: Colors.white.withOpacity(0.05)),
+            ),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                ),
+                child: const Icon(LucideIcons.users, size: 60, color: Colors.white),
+              ),
+            ),
           ],
         ),
       ),
@@ -141,19 +185,22 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
   Widget _buildQuickStats() {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('Abanyamuryango', '${_groupData!['memberCount']}', Icons.people, AppTheme.accentBlue),
-          _buildStatItem('Muri Escrow', Formatters.formatCompactNumber(_groupData!['escrowBalance']), Icons.account_balance, AppTheme.primaryGreen),
-          _buildStatItem('Imigabane yawe', Formatters.formatCompactNumber(_membershipData?['totalShares'] ?? 0), Icons.pie_chart, AppTheme.secondaryGold),
+          _buildStatItem('Abantu', '${_groupData!['memberCount']}', LucideIcons.userPlus, AppTheme.primaryBlue),
+          _buildStatItem('Escrow', Formatters.formatCompactNumber(_groupData!['escrowBalance']), LucideIcons.shieldCheck, AppTheme.primaryGreen),
+          _buildStatItem('Shares', Formatters.formatCompactNumber(_membershipData?['totalShares'] ?? 0), LucideIcons.pieChart, AppTheme.primaryYellow),
         ],
       ),
     );
@@ -162,33 +209,42 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   Widget _buildStatItem(String label, String value, IconData icon, Color color) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(height: 12),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 10)),
+        Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.w500)),
       ],
     );
   }
 
   Widget _buildActionGrid(bool isAdmin) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildActionItem('Imisanzu', Icons.monetization_on, AppTheme.primaryGreen, () => context.push('/contributions?groupId=${widget.groupId}')),
-          _buildActionItem('Inguzanyo', Icons.request_quote, AppTheme.accentBlue, () => context.push('/loans?groupId=${widget.groupId}')),
-          _buildActionItem('Abantu', Icons.people_outline, Colors.purple, () => context.push('/groups/${widget.groupId}/members')),
-          _buildActionItem('Inama', Icons.event, Colors.orange, () => context.push('/meetings?groupId=${widget.groupId}')),
-          _buildActionItem('Amatangazo', Icons.campaign, Colors.redAccent, () => context.push('/announcements?groupId=${widget.groupId}')),
-          _buildActionItem('Inyungu', Icons.trending_up, Colors.teal, () => context.push('/dividends?groupId=${widget.groupId}')),
-          _buildActionItem('Raporo', Icons.analytics, Colors.indigo, () => context.push('/reports?groupId=${widget.groupId}')),
-          _buildActionItem('Ibyakozwe', Icons.history, Colors.blueGrey, () => context.push('/transactions?groupId=${widget.groupId}')),
-          if (isAdmin) _buildActionItem('Gucunga', Icons.settings, Colors.grey, () => context.push('/groups/${widget.groupId}/dashboard')),
+          const Text('Ibikorwa by\'itsinda', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 3,
+            mainAxisSpacing: 16,
+            crossAxisSpacing: 16,
+            childAspectRatio: 0.9,
+            children: [
+              _buildActionItem('Imisanzu', LucideIcons.coins, AppTheme.primaryBlue, () => context.push('/contributions?groupId=${widget.groupId}')),
+              _buildActionItem('Inguzanyo', LucideIcons.landmark, AppTheme.accentIndigo, () => context.push('/loans?groupId=${widget.groupId}')),
+              _buildActionItem('Abantu', LucideIcons.users, Colors.teal, () => context.push('/groups/${widget.groupId}/members')),
+              _buildActionItem('Inama', LucideIcons.calendar, Colors.orange, () => context.push('/meetings?groupId=${widget.groupId}')),
+              _buildActionItem('Chat', LucideIcons.messageSquare, Colors.pink, () => context.push('/groups/${widget.groupId}/chat')),
+              _buildActionItem('Raporo', LucideIcons.barChart3, AppTheme.primaryGreen, () => context.push('/reports?groupId=${widget.groupId}')),
+            ],
+          ),
         ],
       ),
     );
@@ -197,19 +253,19 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
   Widget _buildActionItem(String label, IconData icon, Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2)),
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+            const SizedBox(height: 12),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color.withOpacity(0.8))),
           ],
         ),
       ),
@@ -218,33 +274,47 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
   Widget _buildGroupInfo() {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Amakuru y\'itsinda', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          _buildInfoRow('Ibisobanuro', _groupData!['description'] ?? 'Nta bisobanuro bihari'),
-          _buildInfoRow('Aho riherereye', '${_groupData!['province']}, ${_groupData!['district']}, ${_groupData!['sector']}'),
-          _buildInfoRow('Agaciro k\'umugabane', Formatters.formatCurrency((_groupData!['shareValue'] ?? 0).toDouble())),
-          _buildInfoRow('Inyungu ku nguzanyo', '${_groupData!['loanInterestRate']}%'),
-          _buildInfoRow('Igihe cyo gutanga', _groupData!['contributionFrequency'] ?? 'Buri cyumweru'),
-          _buildInfoRow('Igihe cyashinzwe', Formatters.formatDate(DateTime.parse(_groupData!['createdAt']))),
-        ],
+      padding: const EdgeInsets.all(20),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.grey.shade100),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(LucideIcons.info, size: 20, color: AppTheme.primaryBlue),
+                const SizedBox(width: 8),
+                const Text('Amakuru y\'inyongezo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildInfoRow('Ibisobanuro', _groupData!['description'] ?? 'Nta bisobanuro bihari'),
+            _buildInfoRow('Aho riherereye', '${_groupData!['district']}, ${_groupData!['sector']}'),
+            _buildInfoRow('Agaciro k\'umugabane', Formatters.formatCurrency((_groupData!['shareValue'] ?? 0).toDouble())),
+            _buildInfoRow('Inyungu ku nguzanyo', '${_groupData!['loanInterestRate']}%'),
+            _buildInfoRow('Igihe cyashinzwe', Formatters.formatDate(DateTime.parse(_groupData!['createdAt']))),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-          const Divider(),
+          Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Divider(color: Colors.grey.shade100, height: 1),
         ],
       ),
     );

@@ -14,6 +14,7 @@ import 'core/services/analytics_service.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/providers/language_provider.dart';
 import 'presentation/routes/app_router.dart';
+import 'core/localization/rw_localizations.dart';
 
 final logger = Logger(
   printer: PrettyPrinter(
@@ -28,8 +29,7 @@ final logger = Logger(
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  logger.i('Background message: ${message.messageId}');
+  logger.i('Background message received');
 }
 
 void main() async {
@@ -50,35 +50,37 @@ void main() async {
   ]);
 
   try {
-    try {
-      await Firebase.initializeApp();
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-      logger.i('Firebase initialized successfully');
-    } catch (e) {
-      logger.e('Firebase initialization failed: $e');
-    }
-
     await Hive.initFlutter();
-    logger.i('Hive initialized successfully');
+    logger.i('💡 Hive initialized successfully');
 
     await RwandaLocation.initialize();
-    logger.i('Rwanda Location data loaded');
+    logger.i('💡 Rwanda Location data loaded');
+
+    try {
+      // For Web, ensure you have initialized Firebase properly or handle it
+      // If you're getting "FirebaseOptions cannot be null", it's usually because
+      // DefaultFirebaseOptions.currentPlatform is not passed.
+      // In this setup, we'll try to initialize but keep going if it fails.
+      await Firebase.initializeApp();
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      logger.i('💡 Firebase initialized');
+    } catch (e) {
+      logger.w('⚠️ Firebase skipped or failed: $e');
+    }
 
     try {
       await NotificationService().initialize();
-      logger.i('Notification service initialized');
-
       await FCMService.initialize(
         onMessageTap: (data) => _handleNotificationNavigation(data),
       );
-      logger.i('FCM service initialized');
+      logger.i('💡 Services initialized');
     } catch (e) {
-      logger.e('Notification/FCM initialization failed: $e');
+      logger.w('⚠️ Some services could not start: $e');
     }
 
     runApp(const ProviderScope(child: EKiminaApp()));
   } catch (e, stackTrace) {
-    logger.e('Initialization error', error: e, stackTrace: stackTrace);
+    logger.e('❌ Critical initialization error', error: e, stackTrace: stackTrace);
     runApp(const ProviderScope(child: ErrorApp()));
   }
 }
@@ -103,18 +105,14 @@ class EKiminaApp extends ConsumerWidget {
         Locale('en', ''),
         Locale('fr', ''),
       ],
-      localizationsDelegates: [
+      localizationsDelegates: const [
+        RwMaterialLocalizationsDelegate(),
+        RwCupertinoLocalizationsDelegate(),
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: router,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
-          child: child!,
-        );
-      },
     );
   }
 }
@@ -134,21 +132,10 @@ class ErrorApp extends StatelessWidget {
               children: [
                 const Icon(Icons.error_outline, size: 64, color: Colors.red),
                 const SizedBox(height: 16),
-                const Text(
-                  'Ikosa ritunguranye',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Hari ikosa ryabaye mu gutangiza porogaramu. Ongera ugerageze.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
-                ),
+                const Text('Ikosa ritunguranye', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () {
-                    SystemNavigator.pop();
-                  },
+                  onPressed: () => SystemNavigator.pop(),
                   child: const Text('Funga'),
                 ),
               ],
@@ -161,8 +148,5 @@ class ErrorApp extends StatelessWidget {
 }
 
 void _handleNotificationNavigation(Map<String, dynamic> data) {
-  final type = data['type'] as String?;
-  final id = data['id'] as String?;
-  
-  logger.i('Notification tapped: type=$type, id=$id');
+  logger.i('Notification tapped: $data');
 }

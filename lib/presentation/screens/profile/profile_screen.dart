@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/remote/api_client.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../../../core/services/biometric_service.dart';
@@ -43,10 +45,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
       }
 
       final api = ref.read(apiClientProvider);
-      final wallet = await api.getWallet(userId);
-      final groups = await api.getGroups(userId);
-      final transactions = await api.getTransactions(userId: userId);
-      final loans = await api.getLoans(membershipId: userId);
+      final results = await Future.wait([
+        api.getWallet(userId),
+        api.getGroups(userId),
+        api.getTransactions(userId: userId),
+        api.getLoans(membershipId: userId),
+      ]);
+      
       final phone = await storage.getUserPhone();
 
       if (mounted) {
@@ -54,16 +59,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
           _userData = {
             'userId': userId,
             'phone': phone,
-            'balance': (wallet['wallet']?['balance'] ?? 0).toDouble(),
-            'groupCount': (groups['groups'] as List?)?.length ?? 0,
+            'balance': (results[0]['wallet']?['balance'] ?? 0).toDouble(),
+            'groupCount': (results[1]['groups'] as List?)?.length ?? 0,
           };
           _stats = {
-            'totalDeposits': (transactions['transactions'] as List?)?.where((t) => t['type'] == 'DEPOSIT').fold(0.0, (sum, t) => sum + t['amount']) ?? 0,
-            'totalWithdrawals': (transactions['transactions'] as List?)?.where((t) => t['type'] == 'WITHDRAWAL').fold(0.0, (sum, t) => sum + t['amount']) ?? 0,
-            'activeLoans': (loans['loans'] as List?)?.where((l) => l['status'] == 'ACTIVE').length ?? 0,
-            'totalLoans': (loans['loans'] as List?)?.fold(0.0, (sum, l) => sum + l['amount']) ?? 0,
+            'totalDeposits': (results[2]['transactions'] as List?)?.where((t) => t['type'] == 'DEPOSIT' || t['type'] == 'CONTRIBUTION').fold(0.0, (sum, t) => sum + (t['amount'] ?? 0)) ?? 0,
+            'totalWithdrawals': (results[2]['transactions'] as List?)?.where((t) => t['type'] == 'WITHDRAWAL').fold(0.0, (sum, t) => sum + (t['amount'] ?? 0)) ?? 0,
+            'activeLoans': (results[3]['loans'] as List?)?.where((l) => l['status'] == 'ACTIVE').length ?? 0,
+            'totalLoans': (results[3]['loans'] as List?)?.fold(0.0, (sum, l) => sum + (l['amount'] ?? 0)) ?? 0,
           };
-          _recentActivity = (transactions['transactions'] as List?)?.take(10).toList() ?? [];
+          _recentActivity = (results[2]['transactions'] as List?)?.take(10).toList() ?? [];
           _loading = false;
         });
       }
@@ -82,317 +87,312 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> with SingleTicker
   }
 
   Future<void> _toggleBiometric(bool value) async {
+    final biometric = BiometricService();
     if (value) {
-      final biometric = BiometricService();
       final canAuth = await biometric.canCheckBiometrics();
       if (!canAuth) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Intoki/Isura ntiboneka'), backgroundColor: Colors.red));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Intoki/Isura ntiboneka')));
         return;
       }
       final authenticated = await biometric.authenticateForLogin();
       if (authenticated) {
-        final storage = SecureStorageService();
-        await storage.setBiometricEnabled(true);
+        await SecureStorageService().setBiometricEnabled(true);
         setState(() => _biometricEnabled = true);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Intoki/Isura yashyizweho'), backgroundColor: Colors.green));
       }
     } else {
-      final storage = SecureStorageService();
-      await storage.setBiometricEnabled(false);
+      await SecureStorageService().setBiometricEnabled(false);
       setState(() => _biometricEnabled = false);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Intoki/Isura yavanweho'), backgroundColor: Colors.orange));
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _loading 
+        ? const Center(child: CircularProgressIndicator())
+        : NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverAppBar(
+                expandedHeight: 280,
+                pinned: true,
+                stretch: true,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: _buildProfileHeader(),
+                  stretchModes: const [StretchMode.zoomBackground],
+                ),
+                bottom: TabBar(
+                  controller: _tabController,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  tabs: const [
+                    Tab(text: 'Amakuru'),
+                    Tab(text: 'Imibare'),
+                    Tab(text: 'Ibikorwa'),
+                  ],
+                ),
+              ),
+            ],
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildInfoTab(),
+                _buildStatsTab(),
+                _buildActivityTab(),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Widget _buildProfileHeader() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: -50,
+            right: -50,
+            child: CircleAvatar(radius: 100, backgroundColor: Colors.white.withOpacity(0.05)),
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 40),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+                  child: const Icon(LucideIcons.user, size: 50, color: AppTheme.primaryBlue),
+                ),
+              ).animate().scale().fadeIn(),
+              const SizedBox(height: 16),
+              Text(
+                Formatters.formatPhone(_userData?['phone'] ?? ''),
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Umunyamuryango wa E-Kimina',
+                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTab() {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        _buildSectionHeader('Umubike wawe'),
+        const SizedBox(height: 12),
+        _buildStatCard(
+          'Balance yose', 
+          Formatters.formatCurrency(_userData?['balance'] ?? 0), 
+          LucideIcons.wallet, 
+          AppTheme.primaryBlue,
+        ),
+        _buildStatCard(
+          'Amatsinda urimo', 
+          '${_userData?['groupCount'] ?? 0} Amatsinda', 
+          LucideIcons.users, 
+          AppTheme.primaryYellow,
+        ),
+        const SizedBox(height: 24),
+        _buildSectionHeader('Igenamiterere'),
+        const SizedBox(height: 12),
+        _buildMenuCard([
+          _buildMenuItem(LucideIcons.user, 'Hindura Amazina', () {}),
+          _buildMenuItem(LucideIcons.lock, 'Hindura Ijambo ry\'ibanga', () {}),
+          _buildMenuItem(LucideIcons.shieldCheck, 'PIN ya Wallet', () {}),
+        ]),
+        const SizedBox(height: 24),
+        _buildSectionHeader('Umutekano'),
+        const SizedBox(height: 12),
+        _buildMenuCard([
+          SwitchListTile(
+            value: _biometricEnabled,
+            onChanged: _toggleBiometric,
+            secondary: const Icon(LucideIcons.fingerprint, color: AppTheme.primaryBlue),
+            title: const Text('Intoki / Isura', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+        ]),
+        const SizedBox(height: 24),
+        _buildSectionHeader('Ibindi'),
+        const SizedBox(height: 12),
+        _buildMenuCard([
+          _buildMenuItem(LucideIcons.helpCircle, 'Ubufasha', () {}),
+          _buildMenuItem(LucideIcons.info, 'Amategeko n\'amabwiriza', () {}),
+          _buildMenuItem(LucideIcons.logOut, 'Sohoka muri App', _logout, color: Colors.red),
+        ]),
+        const SizedBox(height: 100),
+      ],
+    ).animate().fadeIn();
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuCard(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildMenuItem(IconData icon, String title, VoidCallback onTap, {Color? color}) {
+    return ListTile(
+      leading: Icon(icon, color: color ?? AppTheme.primaryBlue, size: 22),
+      title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: color)),
+      trailing: const Icon(LucideIcons.chevronRight, size: 18, color: Colors.grey),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+    );
+  }
+
+  Widget _buildStatsTab() {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        _buildStatCard('Ayashyizweho yose', Formatters.formatCurrency(_stats?['totalDeposits'] ?? 0), LucideIcons.trendingUp, Colors.green),
+        _buildStatCard('Ayakuweho yose', Formatters.formatCurrency(_stats?['totalWithdrawals'] ?? 0), LucideIcons.trendingDown, Colors.orange),
+        _buildStatCard('Inguzanyo Zose', Formatters.formatCurrency(_stats?['totalLoans'] ?? 0), LucideIcons.landmark, AppTheme.accentIndigo),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryBlue.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            children: [
+              const Icon(LucideIcons.award, size: 48, color: AppTheme.primaryBlue),
+              const SizedBox(height: 16),
+              const Text('Incamake y\'ubwizigame', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              const SizedBox(height: 8),
+              Text(
+                'Urakataje mu kubika no kugurizanya! Komeza gutya ubashe kwiteza imbere hamwe na E-Kimina.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).animate().fadeIn();
+  }
+
+  Widget _buildActivityTab() {
+    if (_recentActivity.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.clock, size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            const Text('Nta bikorwa bihari', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: _recentActivity.length,
+      itemBuilder: (context, index) {
+        final activity = _recentActivity[index];
+        final isDeposit = activity['type'] == 'DEPOSIT' || activity['type'] == 'CONTRIBUTION';
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.grey.shade100),
+          ),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: (isDeposit ? Colors.green : Colors.orange).withOpacity(0.1),
+              child: Icon(
+                isDeposit ? LucideIcons.arrowDownLeft : LucideIcons.arrowUpRight,
+                color: isDeposit ? Colors.green : Colors.orange,
+                size: 20,
+              ),
+            ),
+            title: Text(activity['type'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            subtitle: Text(Formatters.formatDate(DateTime.parse(activity['createdAt'])), style: const TextStyle(fontSize: 12)),
+            trailing: Text(
+              Formatters.formatCurrency(activity['amount'].toDouble()),
+              style: TextStyle(fontWeight: FontWeight.bold, color: isDeposit ? Colors.green : Colors.orange),
+            ),
+          ),
+        );
+      },
+    ).animate().fadeIn();
   }
 
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sohoka'),
-        content: const Text('Uremeza ko ushaka gusohoka?'),
+        title: const Text('Gusohoka'),
+        content: const Text('Uremeza ko ushaka gusohoka muri porogaramu?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Oya')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Yego'),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Yego, Sohoka', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      final storage = SecureStorageService();
-      await storage.clearAll();
-      ref.read(authStateProvider.notifier).state = false;
+      await SecureStorageService().clearAll();
       if (mounted) context.go('/login');
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return Scaffold(appBar: AppBar(title: const Text('Umwirondoro')), body: const Center(child: CircularProgressIndicator()));
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Umwirondoro'),
-        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loadProfile)],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [Tab(text: 'Amakuru'), Tab(text: 'Imibare'), Tab(text: 'Ibikorwa')],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [_buildInfoTab(), _buildStatsTab(), _buildActivityTab()],
-      ),
-    );
-  }
-
-  Widget _buildInfoTab() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(gradient: LinearGradient(colors: [AppTheme.primaryGreen, AppTheme.primaryGreen.withOpacity(0.8)])),
-            child: Column(
-              children: [
-                CircleAvatar(radius: 50, backgroundColor: Colors.white, child: Text(_userData!['phone']?.substring(0, 2) ?? 'U', style: const TextStyle(fontSize: 32, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold))),
-                const SizedBox(height: 16),
-                Text(Formatters.formatPhone(_userData!['phone'] ?? ''), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
-                  child: Text('ID: ${_userData!['userId']?.substring(0, 8)}...', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildStatCard('Amafaranga', Formatters.formatCurrency(_userData!['balance']), Icons.account_balance_wallet, AppTheme.primaryGreen),
-          _buildStatCard('Amatsinda', '${_userData!['groupCount']}', Icons.group, AppTheme.accentBlue),
-          const SizedBox(height: 16),
-          _buildSection('Konti', [
-            _buildMenuItem('Hindura amazina', Icons.edit, () => _showEditDialog('name')),
-            _buildMenuItem('Hindura nimero', Icons.phone, () => _showEditDialog('phone')),
-            _buildMenuItem('Hindura ijambo ryibanga', Icons.lock, () => _showChangePasswordDialog()),
-          ]),
-          _buildSection('Umutekano', [
-            SwitchListTile(
-              secondary: const Icon(Icons.fingerprint, color: AppTheme.primaryGreen),
-              title: const Text('Intoki/Isura'),
-              subtitle: const Text('Koresha intoki cyangwa isura'),
-              value: _biometricEnabled,
-              onChanged: _toggleBiometric,
-            ),
-            _buildMenuItem('PIN ya Wallet', Icons.pin, () => _showChangePinDialog()),
-          ]),
-          _buildSection('Ubufasha', [
-            _buildMenuItem('Ibibazo bikunze kubazwa', Icons.help, () {}),
-            _buildMenuItem('Twandikire', Icons.email, () {}),
-            _buildMenuItem('Amategeko', Icons.policy, () {}),
-            _buildMenuItem('Ibanga', Icons.privacy_tip, () {}),
-          ]),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _logout,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 16)),
-                icon: const Icon(Icons.logout),
-                label: const Text('Sohoka', style: TextStyle(fontSize: 16)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Imibare yawe', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 20),
-                _buildStatRow('Amafaranga yashyizweho', Formatters.formatCurrency(_stats!['totalDeposits']), Icons.arrow_downward, Colors.green),
-                const Divider(),
-                _buildStatRow('Amafaranga yakuweho', Formatters.formatCurrency(_stats!['totalWithdrawals']), Icons.arrow_upward, Colors.red),
-                const Divider(),
-                _buildStatRow('Inguzanyo zikoreshwa', '${_stats!['activeLoans']}', Icons.request_quote, AppTheme.accentBlue),
-                const Divider(),
-                _buildStatRow('Inguzanyo zose', Formatters.formatCurrency(_stats!['totalLoans']), Icons.monetization_on, AppTheme.warningOrange),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Amatsinda', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                ListTile(
-                  leading: const Icon(Icons.group, color: AppTheme.primaryGreen),
-                  title: const Text('Amatsinda yanjye'),
-                  trailing: Text('${_userData!['groupCount']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  onTap: () => context.push('/groups'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActivityTab() {
-    return _recentActivity.isEmpty
-        ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.history, size: 64, color: Colors.grey[400]), const SizedBox(height: 16), Text('Nta bikorwa', style: TextStyle(color: Colors.grey[600]))]))
-        : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _recentActivity.length,
-            itemBuilder: (context, index) {
-              final activity = _recentActivity[index];
-              final isDeposit = activity['type'] == 'DEPOSIT' || activity['type'] == 'CONTRIBUTION';
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isDeposit ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                    child: Icon(isDeposit ? Icons.arrow_downward : Icons.arrow_upward, color: isDeposit ? Colors.green : Colors.red),
-                  ),
-                  title: Text(activity['description'] ?? activity['type']),
-                  subtitle: Text(Formatters.formatDateTime(DateTime.parse(activity['createdAt']))),
-                  trailing: Text(Formatters.formatCurrency(activity['amount'].toDouble()), style: TextStyle(fontWeight: FontWeight.bold, color: isDeposit ? Colors.green : Colors.red)),
-                ),
-              );
-            },
-          );
-  }
-
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color)),
-        title: Text(label),
-        trailing: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, String value, IconData icon, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label)),
-          Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSection(String title, List<Widget> children) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey))),
-        ...children,
-      ],
-    );
-  }
-
-  Widget _buildMenuItem(String title, IconData icon, VoidCallback onTap) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ListTile(
-        leading: Icon(icon, color: AppTheme.primaryGreen),
-        title: Text(title),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  void _showEditDialog(String field) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Hindura ${field == 'name' ? 'amazina' : 'nimero'}'),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(labelText: field == 'name' ? 'Amazina' : 'Nimero', border: const OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hagarika')),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Bika')),
-        ],
-      ),
-    );
-  }
-
-  void _showChangePasswordDialog() {
-    final oldController = TextEditingController();
-    final newController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hindura ijambo ryibanga'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: oldController, obscureText: true, decoration: const InputDecoration(labelText: 'Ijambo ryibanga rishaje', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(controller: newController, obscureText: true, decoration: const InputDecoration(labelText: 'Ijambo ryibanga rishya', border: OutlineInputBorder())),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hagarika')),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Hindura')),
-        ],
-      ),
-    );
-  }
-
-  void _showChangePinDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hindura PIN'),
-        content: TextField(
-          controller: controller,
-          obscureText: true,
-          keyboardType: TextInputType.number,
-          maxLength: 4,
-          decoration: const InputDecoration(labelText: 'PIN nshya', border: OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hagarika')),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Bika')),
-        ],
-      ),
-    );
   }
 
   @override

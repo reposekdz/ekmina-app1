@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/remote/api_client.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../../../core/services/biometric_service.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/utils/error_handler.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../routes/app_router.dart';
 import 'register_screen.dart';
 import 'password_reset_screen.dart';
@@ -47,7 +50,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (authenticated) {
       final phone = await _storage.getUserPhone();
       if (phone != null) {
-        _handleLogin();
+        // In a real app, you'd handle token refresh or re-auth here
+        _handleLogin(); 
       }
     }
   }
@@ -72,14 +76,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           await _storage.saveUserId(response['user']['id']);
           await _storage.saveUserPhone(response['user']['phone']);
           
-          ref.read(authStateProvider.notifier).state = true;
-          
           if (mounted) context.go('/home');
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(ErrorHandler.handleError(e)), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(ErrorHandler.handleError(e)), 
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       } finally {
@@ -93,98 +99,147 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final localizations = AppLocalizations(widget.language);
     
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF00A86B)),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(localizations),
-                const SizedBox(height: 40),
-                _buildPhoneField(localizations),
-                const SizedBox(height: 20),
-                _buildPasswordField(localizations),
-                const SizedBox(height: 12),
-                _buildForgotPassword(localizations),
-                const SizedBox(height: 32),
-                _buildLoginButton(localizations),
-                const SizedBox(height: 24),
-                _buildRegisterLink(localizations),
-              ],
+      body: Stack(
+        children: [
+          _buildBackground(),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(30),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildLogo(),
+                      const SizedBox(height: 48),
+                      _buildHeader(localizations),
+                      const SizedBox(height: 32),
+                      _buildInputField(
+                        controller: _phoneController,
+                        label: 'Nimero ya Telefoni',
+                        hint: '078XXXXXXX',
+                        icon: LucideIcons.phone,
+                        keyboardType: TextInputType.phone,
+                        validator: Validators.validatePhone,
+                      ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                      const SizedBox(height: 20),
+                      _buildInputField(
+                        controller: _passwordController,
+                        label: 'Ijambo ry\'ibanga',
+                        hint: '••••••••',
+                        icon: LucideIcons.lock,
+                        isPassword: true,
+                        obscureText: _obscurePassword,
+                        onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
+                        validator: Validators.validatePassword,
+                      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.1),
+                      const SizedBox(height: 12),
+                      _buildForgotPassword(localizations),
+                      const SizedBox(height: 40),
+                      _buildLoginButton(localizations).animate().fadeIn(delay: 600.ms).scale(),
+                      const SizedBox(height: 32),
+                      _buildRegisterLink(localizations).animate().fadeIn(delay: 800.ms),
+                    ],
+                  ),
+                ),
+              ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackground() {
+    return Positioned.fill(
+      child: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Opacity(
+          opacity: 0.03,
+          child: Column(
+            children: List.generate(10, (index) => Expanded(
+              child: Row(
+                children: List.generate(5, (idx) => const Expanded(
+                  child: Icon(LucideIcons.landmark, size: 100),
+                )),
+              ),
+            )),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildLogo() {
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: const Icon(LucideIcons.landmark, color: Colors.white, size: 40),
+    ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack);
   }
 
   Widget _buildHeader(AppLocalizations localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(localizations.welcome, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF00A86B))),
+        const Text(
+          'Muraho!',
+          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -1),
+        ),
         const SizedBox(height: 8),
-        Text(widget.language == 'rw' ? 'Injira kuri konti yawe' : widget.language == 'fr' ? 'Connectez-vous à votre compte' : 'Sign in to your account', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-      ],
-    );
-  }
-
-  Widget _buildPhoneField(AppLocalizations localizations) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(localizations.phone, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _phoneController,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(
-            hintText: '078XXXXXXX',
-            prefixIcon: const Icon(Icons.phone, color: Color(0xFF00A86B)),
-            filled: true,
-            fillColor: Colors.grey[50],
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF00A86B), width: 2)),
-          ),
-          validator: Validators.validatePhone,
+        Text(
+          'Injira kugira ngo ukomeze gukoresha E-Kimina.',
+          style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
         ),
       ],
     );
   }
 
-  Widget _buildPasswordField(AppLocalizations localizations) {
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onTogglePassword,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(localizations.password, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 8),
         TextFormField(
-          controller: _passwordController,
-          obscureText: _obscurePassword,
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          style: const TextStyle(fontWeight: FontWeight.w600),
           decoration: InputDecoration(
-            hintText: '••••••••',
-            prefixIcon: const Icon(Icons.lock, color: Color(0xFF00A86B)),
-            suffixIcon: IconButton(icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey), onPressed: () => setState(() => _obscurePassword = !_obscurePassword)),
-            filled: true,
-            fillColor: Colors.grey[50],
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF00A86B), width: 2)),
+            hintText: hint,
+            prefixIcon: Icon(icon, size: 20),
+            suffixIcon: isPassword 
+              ? IconButton(
+                  icon: Icon(obscureText ? LucideIcons.eyeOff : LucideIcons.eye, size: 20),
+                  onPressed: onTogglePassword,
+                )
+              : null,
           ),
-          validator: Validators.validatePassword,
+          validator: validator,
         ),
       ],
     );
@@ -195,7 +250,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       alignment: Alignment.centerRight,
       child: TextButton(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PasswordResetScreen())),
-        child: Text(localizations.forgotPassword, style: const TextStyle(color: Color(0xFF00A86B), fontWeight: FontWeight.w600)),
+        child: const Text(
+          'Wibagiwe ijambo ry\'ibanga?',
+          style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -205,20 +263,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       children: [
         SizedBox(
           width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _handleLogin,
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00A86B), foregroundColor: Colors.white, elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-            child: _isLoading ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white))) : Text(localizations.login, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          height: 60,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: !_isLoading ? AppTheme.primaryGradient : null,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: !_isLoading ? [
+                BoxShadow(
+                  color: AppTheme.primaryBlue.withOpacity(0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ] : null,
+            ),
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _handleLogin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              child: _isLoading 
+                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white))) 
+                : const Text('Injira', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
           ),
         ),
         if (_biometricAvailable) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: _handleBiometricLogin,
-            icon: const Icon(Icons.fingerprint),
-            label: const Text('Injira ukoresheje biometric'),
-            style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 56), side: const BorderSide(color: Color(0xFF00A86B))),
+            icon: const Icon(LucideIcons.fingerprint),
+            label: const Text('Injira n\'intoki'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 60),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.2)),
+            ),
           ),
         ],
       ],
@@ -229,8 +310,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(localizations.dontHaveAccount, style: TextStyle(color: Colors.grey[600])),
-        TextButton(onPressed: () => context.go('/register'), child: Text(localizations.register, style: const TextStyle(color: Color(0xFF00A86B), fontWeight: FontWeight.bold))),
+        Text('Nturaba umunyamuryango?', style: TextStyle(color: Colors.grey.shade600)),
+        TextButton(
+          onPressed: () => context.go('/register'), 
+          child: const Text('Iyandikishe hano', style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold)),
+        ),
       ],
     );
   }

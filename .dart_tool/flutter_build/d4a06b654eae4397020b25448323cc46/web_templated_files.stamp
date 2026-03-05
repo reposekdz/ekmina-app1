@@ -1,1 +1,0 @@
-{"inputs":["C:\\ekmina app\\mobile\\web\\*\\index.html","C:\\ekmina app\\mobile\\web\\flutter_bootstrap.js","C:\\flutter\\bin\\cache\\engine.stamp"],"outputs":["C:\\ekmina app\\mobile\\build\\web\\*\\index.html","C:\\ekmina app\\mobile\\build\\web\\flutter_bootstrap.js"],"buildKey":"[{\"compileTarget\":\"dart2js\",\"renderer\":\"canvaskit\",\"mainJsPath\":\"main.dart.js\"},{}]"}

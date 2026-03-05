@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/remote/api_client.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../core/utils/rwanda_location.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/localization/app_localizations_new.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -31,8 +34,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _selectedProvince;
   String? _selectedDistrict;
   String? _selectedSector;
-  String? _selectedCell;
-  String? _selectedVillage;
 
   @override
   void initState() {
@@ -58,7 +59,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (_formKey.currentState!.validate()) {
       if (_selectedProvince == null || _selectedDistrict == null || _selectedSector == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.language == 'rw' ? 'Uzuza aho utuye' : 'Please select your location'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Uzuza aho utuye bihagije'), backgroundColor: Colors.red),
         );
         return;
       }
@@ -67,15 +68,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       try {
         final api = ref.read(apiClientProvider);
-        final response = await api.register({
+        await api.register({
           'name': _nameController.text,
           'phone': _phoneController.text,
           'password': _passwordController.text,
           'province': _selectedProvince,
           'district': _selectedDistrict,
           'sector': _selectedSector,
-          'cell': _selectedCell,
-          'village': _selectedVillage,
         });
 
         if (mounted) {
@@ -98,112 +97,188 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations(widget.language);
-    
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF00A86B)),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(localizations),
-                const SizedBox(height: 32),
-                _buildNameField(localizations),
-                const SizedBox(height: 20),
-                _buildPhoneField(localizations),
-                const SizedBox(height: 20),
-                _buildPasswordField(localizations),
-                const SizedBox(height: 20),
-                _buildConfirmPasswordField(localizations),
-                const SizedBox(height: 32),
-                _buildLocationSection(localizations),
-                const SizedBox(height: 40),
-                _buildRegisterButton(localizations),
-                const SizedBox(height: 24),
-                _buildLoginLink(localizations),
+      body: Stack(
+        children: [
+          _buildBackground(),
+          SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                _buildSliverAppBar(),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(30),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildHeader(),
+                          const SizedBox(height: 32),
+                          _buildInputField(
+                            controller: _nameController,
+                            label: 'Amazina yawe yose',
+                            hint: 'Urugero: Keza Alice',
+                            icon: LucideIcons.user,
+                            validator: (v) => v?.isEmpty ?? true ? 'Injiza amazina yawe' : null,
+                          ).animate().fadeIn(delay: 100.ms).slideX(begin: 0.1),
+                          const SizedBox(height: 20),
+                          _buildInputField(
+                            controller: _phoneController,
+                            label: 'Nimero ya Telefoni',
+                            hint: '078XXXXXXX',
+                            icon: LucideIcons.phone,
+                            keyboardType: TextInputType.phone,
+                            validator: Validators.validatePhone,
+                          ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.1),
+                          const SizedBox(height: 20),
+                          _buildInputField(
+                            controller: _passwordController,
+                            label: 'Ijambo ry\'ibanga',
+                            hint: '••••••••',
+                            icon: LucideIcons.lock,
+                            isPassword: true,
+                            obscureText: _obscurePassword,
+                            onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
+                            validator: Validators.validatePassword,
+                          ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.1),
+                          const SizedBox(height: 20),
+                          _buildInputField(
+                            controller: _confirmPasswordController,
+                            label: 'Subiramo ijambo ry\'ibanga',
+                            hint: '••••••••',
+                            icon: LucideIcons.shieldCheck,
+                            isPassword: true,
+                            obscureText: _obscureConfirmPassword,
+                            onTogglePassword: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                            validator: (v) => v != _passwordController.text ? 'Amagambo ntabwo ahuje' : null,
+                          ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.1),
+                          const SizedBox(height: 32),
+                          _buildLocationSection().animate().fadeIn(delay: 500.ms),
+                          const SizedBox(height: 48),
+                          _buildRegisterButton().animate().fadeIn(delay: 600.ms).scale(curve: Curves.easeOutBack),
+                          const SizedBox(height: 32),
+                          _buildLoginLink().animate().fadeIn(delay: 700.ms),
+                          const SizedBox(height: 50),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBackground() {
+    return Positioned.fill(
+      child: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Opacity(
+          opacity: 0.03,
+          child: Column(
+            children: List.generate(10, (index) => Expanded(
+              child: Row(
+                children: List.generate(5, (idx) => const Expanded(
+                  child: Icon(LucideIcons.userPlus, size: 100),
+                )),
+              ),
+            )),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader(AppLocalizations localizations) {
+  Widget _buildSliverAppBar() {
+    return SliverAppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(LucideIcons.arrowLeft),
+        onPressed: () => context.pop(),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(localizations.register, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF00A86B))),
-        const SizedBox(height: 8),
-        Text(widget.language == 'rw' ? 'Fungura konti nshya' : 'Create a new account', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+        const Text(
+          'Iyandikishe',
+          style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, letterSpacing: -1.5),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: 60,
+          height: 4,
+          decoration: BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Fungura konti yawe utangire kuzigama mu buryo bugezweho.',
+          style: TextStyle(fontSize: 16, color: Colors.grey.shade600, height: 1.5),
+        ),
       ],
     );
   }
 
-  Widget _buildNameField(AppLocalizations localizations) {
-    return _buildTextField(
-      controller: _nameController,
-      label: localizations.name,
-      hint: localizations.enterName,
-      icon: Icons.person,
-      validator: (v) => v?.isEmpty ?? true ? localizations.enterName : null,
-    );
-  }
-
-  Widget _buildPhoneField(AppLocalizations localizations) {
-    return _buildTextField(
-      controller: _phoneController,
-      label: localizations.phone,
-      hint: '078XXXXXXX',
-      icon: Icons.phone,
-      keyboardType: TextInputType.phone,
-      formatters: [FilteringTextInputFormatter.digitsOnly],
-      validator: Validators.validatePhone,
-    );
-  }
-
-  Widget _buildTextField({
+  Widget _buildInputField({
     required TextEditingController controller,
     required String label,
     required String hint,
     required IconData icon,
+    bool isPassword = false,
     bool obscureText = false,
-    Widget? suffixIcon,
+    VoidCallback? onTogglePassword,
     TextInputType? keyboardType,
-    List<TextInputFormatter>? formatters,
     String? Function(String?)? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
-        const SizedBox(height: 8),
+        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+        const SizedBox(height: 10),
         TextFormField(
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
-          inputFormatters: formatters,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon, color: const Color(0xFF00A86B)),
-            suffixIcon: suffixIcon,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.normal),
+            prefixIcon: Container(
+              padding: const EdgeInsets.all(12),
+              child: Icon(icon, size: 20, color: AppTheme.primaryBlue),
+            ),
+            suffixIcon: isPassword 
+              ? IconButton(
+                  icon: Icon(obscureText ? LucideIcons.eyeOff : LucideIcons.eye, size: 20, color: Colors.grey),
+                  onPressed: onTogglePassword,
+                )
+              : null,
             filled: true,
-            fillColor: Colors.grey[50],
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF00A86B), width: 2)),
+            fillColor: Colors.grey.shade50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+              borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 2),
+            ),
           ),
           validator: validator,
         ),
@@ -211,114 +286,118 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  Widget _buildPasswordField(AppLocalizations localizations) {
-    return _buildTextField(
-      controller: _passwordController,
-      label: localizations.password,
-      hint: '••••••••',
-      icon: Icons.lock,
-      obscureText: _obscurePassword,
-      suffixIcon: IconButton(
-        icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
-        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+  Widget _buildLocationSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
-      validator: Validators.validatePassword,
-    );
-  }
-
-  Widget _buildConfirmPasswordField(AppLocalizations localizations) {
-    return _buildTextField(
-      controller: _confirmPasswordController,
-      label: localizations.confirmPassword,
-      hint: '••••••••',
-      icon: Icons.lock,
-      obscureText: _obscureConfirmPassword,
-      suffixIcon: IconButton(
-        icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
-        onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-      ),
-      validator: (v) => v != _passwordController.text ? 'Amagambo ntabwo ahuje' : null,
-    );
-  }
-
-  Widget _buildLocationSection(AppLocalizations localizations) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(localizations.location, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF00A86B))),
-        const SizedBox(height: 16),
-        _buildDropdown(localizations.selectProvince, _selectedProvince, RwandaLocation.getProvinces(), (v) {
-          setState(() {
-            _selectedProvince = v;
-            _selectedDistrict = _selectedSector = _selectedCell = _selectedVillage = null;
-          });
-        }),
-        if (_selectedProvince != null) ...[
-          const SizedBox(height: 12),
-          _buildDropdown(localizations.selectDistrict, _selectedDistrict, RwandaLocation.getDistricts(_selectedProvince!), (v) {
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(LucideIcons.mapPin, size: 18, color: AppTheme.primaryBlue),
+              const SizedBox(width: 8),
+              const Text('Aho utuye', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildDropdown('Intara', _selectedProvince, RwandaLocation.getProvinces(), (v) {
             setState(() {
-              _selectedDistrict = v;
-              _selectedSector = _selectedCell = _selectedVillage = null;
+              _selectedProvince = v;
+              _selectedDistrict = _selectedSector = null;
             });
           }),
+          if (_selectedProvince != null) ...[
+            const SizedBox(height: 12),
+            _buildDropdown('Akarere', _selectedDistrict, RwandaLocation.getDistricts(_selectedProvince!), (v) {
+              setState(() {
+                _selectedDistrict = v;
+                _selectedSector = null;
+              });
+            }),
+          ],
+          if (_selectedDistrict != null) ...[
+            const SizedBox(height: 12),
+            _buildDropdown('Umurenge', _selectedSector, RwandaLocation.getSectors(_selectedProvince!, _selectedDistrict!), (v) {
+              setState(() => _selectedSector = v);
+            }),
+          ],
         ],
-        if (_selectedDistrict != null) ...[
-          const SizedBox(height: 12),
-          _buildDropdown(localizations.selectSector, _selectedSector, RwandaLocation.getSectors(_selectedProvince!, _selectedDistrict!), (v) {
-            setState(() {
-              _selectedSector = v;
-              _selectedCell = _selectedVillage = null;
-            });
-          }),
-        ],
-      ],
+      ),
     );
   }
 
   Widget _buildDropdown(String hint, String? value, List<String> items, ValueChanged<String?> onChanged) {
     return DropdownButtonFormField<String>(
       value: value,
+      isExpanded: true,
+      icon: const Icon(LucideIcons.chevronDown, size: 18),
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: const Icon(Icons.location_on, color: Color(0xFF00A86B)),
         filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey[200]!)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF00A86B), width: 2)),
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
       ),
-      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item, style: const TextStyle(fontSize: 14)))).toList(),
       onChanged: onChanged,
     );
   }
 
-  Widget _buildRegisterButton(AppLocalizations localizations) {
+  Widget _buildRegisterButton() {
     return SizedBox(
       width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleRegister,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF00A86B),
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      height: 64,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: !_isLoading ? AppTheme.primaryGradient : null,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: !_isLoading ? [
+            BoxShadow(
+              color: AppTheme.primaryBlue.withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ] : null,
         ),
-        child: _isLoading
-            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-            : Text(localizations.register, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _handleRegister,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          ),
+          child: _isLoading 
+            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Fungura Konti', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SizedBox(width: 8),
+                  Icon(LucideIcons.arrowRight, size: 20),
+                ],
+              ),
+        ),
       ),
     );
   }
 
-  Widget _buildLoginLink(AppLocalizations localizations) {
+  Widget _buildLoginLink() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(localizations.alreadyHaveAccount, style: TextStyle(color: Colors.grey[600])),
+        Text('Ufite konti?', style: TextStyle(color: Colors.grey.shade600)),
         TextButton(
           onPressed: () => context.go('/login'),
-          child: Text(localizations.login, style: const TextStyle(color: Color(0xFF00A86B), fontWeight: FontWeight.bold)),
+          child: const Text('Injira hano', style: TextStyle(color: AppTheme.primaryBlue, fontWeight: FontWeight.bold)),
         ),
       ],
     );

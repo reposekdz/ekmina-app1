@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/remote/api_client.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_handler.dart';
@@ -71,86 +73,118 @@ class _AdvancedTransactionsScreenState extends ConsumerState<AdvancedTransaction
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Amateka y\'ibyakozwe', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadTransactions),
-          IconButton(icon: const Icon(Icons.download), onPressed: () {}),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                _buildSummaryCards(),
-                _buildTabBar(),
-                Expanded(child: _buildTransactionsList()),
-              ],
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            expandedHeight: 120,
+            floating: true,
+            pinned: true,
+            elevation: 0,
+            title: const Text('Amateka y\'ibyakozwe', style: TextStyle(fontWeight: FontWeight.bold)),
+            actions: [
+              IconButton(icon: const Icon(LucideIcons.refreshCw), onPressed: _loadTransactions),
+              IconButton(icon: const Icon(LucideIcons.download), onPressed: () {}),
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(60),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade100),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicator: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey,
+                  labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  tabs: const [
+                    Tab(text: 'Byose'),
+                    Tab(text: 'Eshyuza'),
+                    Tab(text: 'Kuramo'),
+                    Tab(text: 'Imisanzu'),
+                    Tab(text: 'Inguzanyo'),
+                  ],
+                ),
+              ),
             ),
+          ),
+        ],
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  _buildSummarySection().animate().fadeIn().slideY(begin: 0.1),
+                  Expanded(child: _buildTransactionsList()),
+                ],
+              ),
+      ),
     );
   }
 
-  Widget _buildSummaryCards() {
-    return Container(
-      padding: const EdgeInsets.all(16),
+  Widget _buildSummarySection() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          Expanded(child: _buildSummaryCard('Yinjiye', Formatters.formatCurrency(_totalIncome), AppTheme.successGreen, Icons.arrow_downward)),
-          const SizedBox(width: 12),
-          Expanded(child: _buildSummaryCard('Yasohotse', Formatters.formatCurrency(_totalExpense), Colors.redAccent, Icons.arrow_upward)),
+          Expanded(
+            child: _buildGradientSummaryCard(
+              'Yinjiye', 
+              Formatters.formatCurrency(_totalIncome), 
+              AppTheme.successGradient, 
+              LucideIcons.arrowDownLeft,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _buildGradientSummaryCard(
+              'Yasohotse', 
+              Formatters.formatCurrency(_totalExpense), 
+              const LinearGradient(colors: [Colors.orange, Colors.deepOrange]), 
+              LucideIcons.arrowUpRight,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryCard(String label, String amount, Color color, IconData icon) {
+  Widget _buildGradientSummaryCard(String label, String amount, Gradient gradient, IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2)),
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: (gradient as LinearGradient).colors.first.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 6),
-              Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
-            ],
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.white, size: 16),
           ),
-          const SizedBox(height: 8),
-          Text(amount, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        isScrollable: true,
-        indicator: BoxDecoration(
-          color: AppTheme.primaryGreen,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.grey,
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-        tabs: const [
-          Tab(text: 'Byose'),
-          Tab(text: 'Eshyuza'),
-          Tab(text: 'Kuramo'),
-          Tab(text: 'Imisanzu'),
-          Tab(text: 'Inguzanyo'),
+          const SizedBox(height: 12),
+          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Text(amount, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -179,36 +213,49 @@ class _AdvancedTransactionsScreenState extends ConsumerState<AdvancedTransaction
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[300]),
+            Container(
+              padding: const EdgeInsets.all(30),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(LucideIcons.receipt, size: 64, color: Colors.grey[300]),
+            ),
             const SizedBox(height: 16),
-            Text('Nta bikorwa byabonetse', style: TextStyle(color: Colors.grey[600])),
+            Text('Nta bikorwa byabonetse', style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500)),
           ],
         ),
-      );
+      ).animate().fadeIn();
     }
 
     return RefreshIndicator(
       onRefresh: _loadTransactions,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: filtered.length,
         itemBuilder: (context, index) {
           final tx = filtered[index];
           final date = DateTime.parse(tx['createdAt']);
 
+          bool showDateHeader = false;
           if (index == 0 || _getDateLabel(date) != _getDateLabel(DateTime.parse(filtered[index - 1]['createdAt']))) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                  child: Text(_getDateLabel(date), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                ),
-                _buildTransactionCard(tx),
-              ],
-            );
+            showDateHeader = true;
           }
-          return _buildTransactionCard(tx);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (showDateHeader)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24, bottom: 12, left: 4),
+                  child: Text(
+                    _getDateLabel(date), 
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade400, fontSize: 12, letterSpacing: 1),
+                  ),
+                ),
+              _buildTransactionCard(tx, index),
+            ],
+          );
         },
       ),
     );
@@ -216,13 +263,13 @@ class _AdvancedTransactionsScreenState extends ConsumerState<AdvancedTransaction
 
   String _getDateLabel(DateTime date) {
     final now = DateTime.now();
-    if (date.year == now.year && date.month == now.month && date.day == now.day) return 'Uyu munsi';
+    if (date.year == now.year && date.month == now.month && date.day == now.day) return 'UYU MUNSI';
     final yesterday = now.subtract(const Duration(days: 1));
-    if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) return 'Ejo hashize';
-    return DateFormat('dd MMM yyyy').format(date);
+    if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) return 'EJO HASHIZE';
+    return DateFormat('dd MMMM yyyy').format(date).toUpperCase();
   }
 
-  Widget _buildTransactionCard(dynamic tx) {
+  Widget _buildTransactionCard(dynamic tx, int index) {
     final type = tx['type'] as String;
     final amount = (tx['amount'] ?? 0).toDouble();
     final isInflow = type == 'DEPOSIT' || type == 'CONTRIBUTION' || type == 'LOAN_DISBURSEMENT' || type == 'DIVIDEND_PAYMENT';
@@ -231,71 +278,97 @@ class _AdvancedTransactionsScreenState extends ConsumerState<AdvancedTransaction
     Color color;
 
     switch (type) {
-      case 'DEPOSIT': icon = Icons.add_circle_outline; color = AppTheme.primaryGreen; break;
-      case 'WITHDRAWAL': icon = Icons.remove_circle_outline; color = Colors.orange; break;
-      case 'CONTRIBUTION': icon = Icons.savings_outlined; color = AppTheme.accentBlue; break;
-      case 'LOAN_DISBURSEMENT': icon = Icons.request_quote_outlined; color = Colors.purple; break;
-      case 'LOAN_REPAYMENT': icon = Icons.payments_outlined; color = Colors.indigo; break;
-      case 'PENALTY': icon = Icons.warning_amber_rounded; color = Colors.redAccent; break;
-      default: icon = Icons.swap_horiz; color = Colors.grey;
+      case 'DEPOSIT': icon = LucideIcons.plusCircle; color = AppTheme.primaryBlue; break;
+      case 'WITHDRAWAL': icon = LucideIcons.minusCircle; color = Colors.orange; break;
+      case 'CONTRIBUTION': icon = LucideIcons.landmark; color = AppTheme.primaryGreen; break;
+      case 'LOAN_DISBURSEMENT': icon = LucideIcons.landmark; color = AppTheme.accentIndigo; break;
+      case 'LOAN_REPAYMENT': icon = LucideIcons.creditCard; color = Colors.blue; break;
+      case 'PENALTY': icon = LucideIcons.alertTriangle; color = Colors.red; break;
+      default: icon = LucideIcons.arrowLeftRight; color = Colors.grey;
     }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade50),
       ),
       child: ListTile(
         onTap: () => _showDetails(tx),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
           child: Icon(icon, color: color, size: 20),
         ),
-        title: Text(tx['description'] ?? type, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(DateFormat('HH:mm').format(DateTime.parse(tx['createdAt'])), style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+        title: Text(
+          tx['description'] ?? type, 
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), 
+          maxLines: 1, 
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          DateFormat('HH:mm').format(DateTime.parse(tx['createdAt'])), 
+          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+        ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('${isInflow ? '+' : '-'}${Formatters.formatCurrency(amount.abs())}',
-              style: TextStyle(fontWeight: FontWeight.bold, color: isInflow ? AppTheme.successGreen : Colors.redAccent)),
-            Text(tx['status'] ?? 'COMPLETED', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+            Text(
+              '${isInflow ? '+' : '-'}${Formatters.formatCurrency(amount.abs()).replaceAll('RWF', '')}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold, 
+                fontSize: 16,
+                color: isInflow ? Colors.green : Colors.orange,
+              ),
+            ),
+            Text(
+              tx['status'] ?? 'SUCCESS', 
+              style: TextStyle(fontSize: 10, color: Colors.grey[400], fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),
-    );
+    ).animate().fadeIn(delay: (index % 10 * 50).ms).slideX(begin: 0.05);
   }
 
   void _showDetails(dynamic tx) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(24),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(30),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Amakuru y\'igikorwa', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 32),
+            const Text('Amakuru y\'igikorwa', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
             _buildDetailRow('Ubwoko', tx['type']),
-            _buildDetailRow('Amafaranga', Formatters.formatCurrency(tx['amount'].toDouble())),
+            _buildDetailRow('Amafaranga', Formatters.formatCurrency((tx['amount'] ?? 0).toDouble())),
             _buildDetailRow('Ibisobanuro', tx['description'] ?? 'Nta bisobanuro'),
             _buildDetailRow('Itariki', Formatters.formatDateTime(DateTime.parse(tx['createdAt']))),
             _buildDetailRow('Uko bimeze', tx['status'] ?? 'BYARANGIYE'),
             if (tx['reference'] != null) _buildDetailRow('Reference', tx['reference']),
-            const SizedBox(height: 32),
+            const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
+              height: 56,
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, padding: const EdgeInsets.symmetric(vertical: 16)),
                 child: const Text('FUNGA'),
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -304,12 +377,12 @@ class _AdvancedTransactionsScreenState extends ConsumerState<AdvancedTransaction
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[600])),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 15)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
         ],
       ),
     );

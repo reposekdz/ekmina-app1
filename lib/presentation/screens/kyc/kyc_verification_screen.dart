@@ -1,12 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/services/kyc_service.dart';
 import '../../../data/remote/api_client.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../widgets/common_widgets.dart';
 
 class KYCVerificationScreen extends StatefulWidget {
-  const KYCVerificationScreen({Key? key}) : super(key: key);
+  const KYCVerificationScreen({super.key});
 
   @override
   State<KYCVerificationScreen> createState() => _KYCVerificationScreenState();
@@ -31,7 +34,7 @@ class _KYCVerificationScreenState extends State<KYCVerificationScreen> {
 
   Future<void> _captureDocument() async {
     try {
-      final XFile? image = await _kycService.captureDocument();
+      final image = await _kycService.captureDocument();
       if (image != null) {
         setState(() => _documentImage = File(image.path));
       }
@@ -42,7 +45,7 @@ class _KYCVerificationScreenState extends State<KYCVerificationScreen> {
 
   Future<void> _captureSelfie() async {
     try {
-      final XFile? image = await _kycService.captureSelfie();
+      final image = await _kycService.captureSelfie();
       if (image != null) {
         setState(() => _selfieImage = File(image.path));
       }
@@ -77,31 +80,7 @@ class _KYCVerificationScreenState extends State<KYCVerificationScreen> {
       );
 
       if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 32),
-                SizedBox(width: 12),
-                Expanded(child: Text('Byagenze neza!')),
-              ],
-            ),
-            content: const Text(
-              'Umwirondoro wawe woherejwe neza. Uzahabwa ubutumwa iyo byemejwe.',
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context, true);
-                },
-                child: const Text('Siga'),
-              ),
-            ],
-          ),
-        );
+        _showSuccessDialog();
       }
     } catch (e) {
       _showError(e.toString().replaceAll('Exception: ', ''));
@@ -110,9 +89,63 @@ class _KYCVerificationScreenState extends State<KYCVerificationScreen> {
     }
   }
 
+  void _showSuccessDialog() {
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+              child: const Icon(LucideIcons.check, color: Colors.white, size: 40),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Byagenze neza!',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Umwirondoro wawe woherejwe neza. Tugiye kuwusuzuma, turakumenyesha iyo byarangiye.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context, true);
+                },
+                child: const Text('Siga'),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text(message), 
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -120,216 +153,197 @@ class _KYCVerificationScreenState extends State<KYCVerificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Emeza Umwirondoro (KYC)'),
-        centerTitle: true,
+        title: const Text('Emeza Umwirondoro', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: Stepper(
-        currentStep: _currentStep,
-        onStepContinue: () {
-          if (_currentStep < 2) {
-            setState(() => _currentStep++);
-          } else {
-            _submitKYC();
-          }
-        },
-        onStepCancel: () {
-          if (_currentStep > 0) {
-            setState(() => _currentStep--);
-          }
-        },
-        controlsBuilder: (context, details) {
-          return Padding(
-            padding: const EdgeInsets.only(top: 16.0),
-            child: Row(
-              children: [
-                ElevatedButton(
-                  onPressed: _isLoading ? null : details.onStepContinue,
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(_currentStep == 2 ? 'Ohereza' : 'Komeza'),
-                ),
-                if (_currentStep > 0) ...[
-                  const SizedBox(width: 12),
-                  TextButton(
-                    onPressed: details.onStepCancel,
-                    child: const Text('Subira inyuma'),
-                  ),
-                ],
-              ],
-            ),
-          );
-        },
-        steps: [
-          Step(
-            title: const Text('Hitamo Ubwoko bw\'Irangamuntu'),
-            content: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(primary: AppTheme.primaryBlue),
+        ),
+        child: Stepper(
+          type: StepperType.horizontal,
+          currentStep: _currentStep,
+          elevation: 0,
+          onStepContinue: () {
+            if (_currentStep < 2) {
+              setState(() => _currentStep++);
+            } else {
+              _submitKYC();
+            }
+          },
+          onStepCancel: () {
+            if (_currentStep > 0) {
+              setState(() => _currentStep--);
+            }
+          },
+          controlsBuilder: (context, details) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 32.0),
+              child: Row(
                 children: [
-                  DropdownButtonFormField<String>(
-                    value: _selectedDocumentType,
-                    decoration: const InputDecoration(
-                      labelText: 'Ubwoko bw\'irangamuntu',
-                      border: OutlineInputBorder(),
+                  Expanded(
+                    child: CustomButton(
+                      text: _currentStep == 2 ? 'Ohereza' : 'Komeza',
+                      onPressed: details.onStepContinue!,
+                      isLoading: _isLoading,
                     ),
-                    items: _documentTypes.map((type) {
-                      return DropdownMenuItem(
-                        value: type,
-                        child: Text(_kycService.getDocumentTypeText(type, 'rw')),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedDocumentType = value!;
-                        _documentNumberController.clear();
-                      });
-                    },
                   ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _documentNumberController,
-                    decoration: InputDecoration(
-                      labelText: 'Nomero y\'irangamuntu',
-                      hintText: _kycService.getDocumentNumberHint(_selectedDocumentType, 'rw'),
-                      border: const OutlineInputBorder(),
+                  if (_currentStep > 0) ...[
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: CustomButton(
+                        text: 'Subira inyuma',
+                        onPressed: details.onStepCancel!,
+                        isOutlined: true,
+                      ),
                     ),
-                    inputFormatters: [
-                      if (_selectedDocumentType == 'NATIONAL_ID')
-                        FilteringTextInputFormatter.digitsOnly,
-                      if (_selectedDocumentType == 'NATIONAL_ID')
-                        LengthLimitingTextInputFormatter(16),
-                    ],
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Shyiramo nomero y\'irangamuntu';
-                      }
-                      return null;
-                    },
-                  ),
+                  ],
                 ],
               ),
+            );
+          },
+          steps: [
+            Step(
+              title: const Text('Irangamuntu', style: TextStyle(fontSize: 11)),
+              content: _buildStepOne(),
+              isActive: _currentStep >= 0,
+              state: _currentStep > 0 ? StepState.complete : StepState.indexed,
             ),
-            isActive: _currentStep >= 0,
-            state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+            Step(
+              title: const Text('Ifoto ID', style: TextStyle(fontSize: 11)),
+              content: _buildStepTwo(),
+              isActive: _currentStep >= 1,
+              state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+            ),
+            Step(
+              title: const Text('Selfie', style: TextStyle(fontSize: 11)),
+              content: _buildStepThree(),
+              isActive: _currentStep >= 2,
+              state: StepState.indexed,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepOne() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Hitamo Ubwoko bw\'Irangamuntu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 24),
+          DropdownButtonFormField<String>(
+            value: _selectedDocumentType,
+            decoration: const InputDecoration(
+              labelText: 'Ubwoko bw\'irangamuntu',
+              prefixIcon: Icon(LucideIcons.fileText),
+            ),
+            items: _documentTypes.map((type) {
+              return DropdownMenuItem(
+                value: type,
+                child: Text(_kycService.getDocumentTypeText(type, 'rw')),
+              );
+            }).toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedDocumentType = value!;
+                _documentNumberController.clear();
+              });
+            },
           ),
-          Step(
-            title: const Text('Fata Ifoto y\'Irangamuntu'),
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_documentImage != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      _documentImage!,
-                      height: 200,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.credit_card, size: 48, color: Colors.blue[700]),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Amabwiriza:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '• Fata ifoto itangaje\n'
-                        '• Menya ko amazina aboneka neza\n'
-                        '• Koresha umucyo mwiza',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _captureDocument,
-                  icon: const Icon(Icons.camera_alt),
-                  label: Text(_documentImage == null ? 'Fata Ifoto' : 'Ongera Ufate'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                ),
-              ],
-            ),
-            isActive: _currentStep >= 1,
-            state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-          ),
-          Step(
-            title: const Text('Fata Selfie Yawe'),
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_selfieImage != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      _selfieImage!,
-                      height: 200,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.face, size: 48, color: Colors.green[700]),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Amabwiriza:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '• Reba kamera neza\n'
-                        '• Kuraho ibirimo (eyeglasses, hat)\n'
-                        '• Koresha umucyo mwiza\n'
-                        '• Ntukoreshe ifoto ya kera',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _captureSelfie,
-                  icon: const Icon(Icons.camera_front),
-                  label: Text(_selfieImage == null ? 'Fata Selfie' : 'Ongera Ufate'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.green,
-                  ),
-                ),
-              ],
-            ),
-            isActive: _currentStep >= 2,
-            state: StepState.indexed,
+          const SizedBox(height: 24),
+          CustomTextField(
+            label: 'Nomero y\'irangamuntu',
+            controller: _documentNumberController,
+            hint: _kycService.getDocumentNumberHint(_selectedDocumentType, 'rw'),
+            prefixIcon: LucideIcons.hash,
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value == null || value.isEmpty) return 'Shyiramo nomero y\'irangamuntu';
+              return null;
+            },
           ),
         ],
       ),
-    );
+    ).animate().fadeIn();
+  }
+
+  Widget _buildStepTwo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Fata Ifoto y\'Irangamuntu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        const Text('Menya ko amazina n\'ifoto bishobora gusomwa neza.', style: TextStyle(color: Colors.grey)),
+        const SizedBox(height: 24),
+        if (_documentImage != null)
+          Container(
+            height: 200,
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              image: DecorationImage(image: FileImage(_documentImage!), fit: BoxFit.cover),
+              border: Border.all(color: AppTheme.primaryBlue, width: 2),
+            ),
+          ).animate().scale(),
+        CustomCard(
+          onTap: _captureDocument,
+          padding: const EdgeInsets.all(32),
+          color: AppTheme.primaryBlue.withOpacity(0.05),
+          child: Column(
+            children: [
+              const Icon(LucideIcons.camera, size: 48, color: AppTheme.primaryBlue),
+              const SizedBox(height: 16),
+              Text(
+                _documentImage == null ? 'Fata Ifoto y\'Ibere' : 'Ongera Ufate Ifoto',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).animate().fadeIn();
+  }
+
+  Widget _buildStepThree() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Fata Selfie Yawe', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        const Text('Reba kamera neza kandi ukureho amadarubindi cyangwa ingofero.', style: TextStyle(color: Colors.grey)),
+        const SizedBox(height: 24),
+        if (_selfieImage != null)
+          Container(
+            height: 240,
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              image: DecorationImage(image: FileImage(_selfieImage!), fit: BoxFit.cover),
+              border: Border.all(color: Colors.green, width: 3),
+            ),
+          ).animate().scale(),
+        CustomCard(
+          onTap: _captureSelfie,
+          padding: const EdgeInsets.all(32),
+          color: Colors.green.withOpacity(0.05),
+          child: Column(
+            children: [
+              const Icon(LucideIcons.user, size: 48, color: Colors.green),
+              const SizedBox(height: 16),
+              Text(
+                _selfieImage == null ? 'Fata Selfie' : 'Ongera Ufate Selfie',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).animate().fadeIn();
   }
 
   @override
