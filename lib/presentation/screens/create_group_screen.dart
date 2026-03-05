@@ -26,6 +26,17 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _interestController = TextEditingController();
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _shareValueController.dispose();
+    _joinFeeController.dispose();
+    _penaltyController.dispose();
+    _interestController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -65,6 +76,26 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Description',
                     prefixIcon: Icon(Icons.description),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Choose a unique name for your group',
+                          style: TextStyle(color: Colors.blue.shade900, fontSize: 12),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -218,9 +249,57 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   }
 
   void _submitForm() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Group created successfully!')),
+    if (_nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter group name'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (_selectedProvince == null || _selectedDistrict == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select location'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (_shareValueController.text.isEmpty || _interestController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all financial rules'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(color: Color(0xFF00A86B), shape: BoxShape.circle),
+              child: const Icon(Icons.check, size: 48, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            const Text('Group Created!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            Text(
+              'Your group "${_nameController.text}" has been created successfully.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
     );
-    Navigator.pop(context);
   }
 }

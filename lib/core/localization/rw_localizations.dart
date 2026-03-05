@@ -13,6 +13,7 @@ class RwMaterialLocalizationsDelegate extends LocalizationsDelegate<MaterialLoca
   @override
   Future<MaterialLocalizations> load(Locale locale) => SynchronousFuture<MaterialLocalizations>(
         _RwMaterialLocalizations(
+          localeName: locale.toString(),
           fullYearFormat: intl.DateFormat('yyyy', 'rw'),
           compactDateFormat: intl.DateFormat('yMd', 'rw'),
           shortDateFormat: intl.DateFormat('yMMMd', 'rw'),
@@ -31,6 +32,7 @@ class RwMaterialLocalizationsDelegate extends LocalizationsDelegate<MaterialLoca
 
 class _RwMaterialLocalizations extends GlobalMaterialLocalizations {
   const _RwMaterialLocalizations({
+    required String localeName,
     required intl.DateFormat fullYearFormat,
     required intl.DateFormat compactDateFormat,
     required intl.DateFormat shortDateFormat,
@@ -41,6 +43,7 @@ class _RwMaterialLocalizations extends GlobalMaterialLocalizations {
     required intl.NumberFormat decimalFormat,
     required intl.NumberFormat twoDigitZeroPaddedFormat,
   }) : super(
+          localeName: localeName,
           fullYearFormat: fullYearFormat,
           compactDateFormat: compactDateFormat,
           shortDateFormat: shortDateFormat,
@@ -515,6 +518,7 @@ class RwCupertinoLocalizationsDelegate extends LocalizationsDelegate<CupertinoLo
   @override
   Future<CupertinoLocalizations> load(Locale locale) => SynchronousFuture<CupertinoLocalizations>(
         _RwCupertinoLocalizations(
+          localeName: locale.toString(),
           fullYearFormat: intl.DateFormat('yyyy', 'rw'),
           dayFormat: intl.DateFormat('d', 'rw'),
           mediumDateFormat: intl.DateFormat('EEE, MMM d', 'rw'),
@@ -532,6 +536,7 @@ class RwCupertinoLocalizationsDelegate extends LocalizationsDelegate<CupertinoLo
 
 class _RwCupertinoLocalizations extends GlobalCupertinoLocalizations {
   const _RwCupertinoLocalizations({
+    required String localeName,
     required intl.DateFormat fullYearFormat,
     required intl.DateFormat dayFormat,
     required intl.DateFormat mediumDateFormat,
@@ -541,6 +546,7 @@ class _RwCupertinoLocalizations extends GlobalCupertinoLocalizations {
     required intl.DateFormat singleDigitSecondFormat,
     required intl.NumberFormat decimalFormat,
   }) : super(
+          localeName: localeName,
           fullYearFormat: fullYearFormat,
           dayFormat: dayFormat,
           mediumDateFormat: mediumDateFormat,

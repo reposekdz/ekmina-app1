@@ -12,7 +12,9 @@ class GroupsScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
-            onPressed: () {},
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Search functionality coming soon')),
+            ),
           ),
         ],
       ),
@@ -25,9 +27,7 @@ class GroupsScreen extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateGroupScreen()));
-        },
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateGroupScreen())),
         icon: const Icon(Icons.add),
         label: const Text('Create Group'),
       ),
@@ -56,7 +56,14 @@ class GroupsScreen extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () {},
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => GroupDetailsScreen(
+            groupId: 'group123',
+            groupName: name,
+            location: location,
+            memberCount: members,
+            totalBalance: balance * members,
+            userBalance: balance,
+          ))),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -118,7 +125,14 @@ class GroupsScreen extends StatelessWidget {
                       ],
                     ),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => GroupDetailsScreen(
+                        groupId: 'group123',
+                        groupName: name,
+                        location: location,
+                        memberCount: members,
+                        totalBalance: balance * members,
+                        userBalance: balance,
+                      ))),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xFF00A86B),

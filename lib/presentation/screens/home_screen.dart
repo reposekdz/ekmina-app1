@@ -167,7 +167,13 @@ class DashboardTab extends StatelessWidget {
                     'Request Loan',
                     Icons.request_quote,
                     const Color(0xFFFFB800),
-                    () {},
+                    () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoanApplicationScreen(
+                      groupId: 'group123',
+                      groupName: 'Abahizi Kimina',
+                      totalShares: 120,
+                      shareValue: 1000,
+                      interestRate: 10,
+                    ))),
                   ),
                 ),
               ],
@@ -202,7 +208,7 @@ class DashboardTab extends StatelessWidget {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 TextButton(
-                  onPressed: () {},
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GroupsScreen())),
                   child: const Text('See All'),
                 ),
               ],
@@ -280,7 +286,16 @@ class DashboardTab extends StatelessWidget {
   }
 
   Widget _buildGroupCard(String name, String location, String members, String balance) {
-    return Container(
+    return InkWell(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => GroupDetailsScreen(
+        groupId: 'group123',
+        groupName: name,
+        location: location,
+        memberCount: 15,
+        totalBalance: 850000,
+        userBalance: double.parse(balance.replaceAll(',', '').replaceAll(' RWF', '')),
+      ))),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -344,6 +359,7 @@ class DashboardTab extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

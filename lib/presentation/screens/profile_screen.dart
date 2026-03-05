@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../core/theme/app_theme.dart';
 import '../routes/app_router.dart';
+import 'profile/edit_profile_screen_stub.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -107,25 +108,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildSection('Konti', [
                   _buildMenuItem(Icons.account_balance_wallet_outlined, 'Ijakanshyi ryanjye', 'Cunga amafaranga yawe', () => context.push('/wallet')),
                   _buildMenuItem(Icons.history, 'Amateka y\'ibyakozwe', 'Reba ibikorwa byose', () => context.push('/transactions')),
-                  _buildMenuItem(Icons.credit_card, 'Uburyo bwo kwishyura', 'Cunga uburyo ukoresha', () {}),
+                  _buildMenuItem(Icons.credit_card, 'Uburyo bwo kwishyura', 'Cunga uburyo ukoresha', () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Payment methods functionality')),
+                    );
+                  }),
                 ]),
                 const SizedBox(height: 16),
                 _buildSection('Amatsinda', [
                   _buildMenuItem(Icons.groups_outlined, 'Amatsinda yanjye', '${_stats?['groups'] ?? 0} amatsinda urimo', () => context.push('/groups')),
                   _buildMenuItem(Icons.request_quote_outlined, 'Inguzanyo zanjye', 'Reba inguzanyo ufite', () => context.push('/loans')),
-                  _buildMenuItem(Icons.people_outline, 'Ubutumire', 'Ubutumire butararebwa', () {}),
+                  _buildMenuItem(Icons.people_outline, 'Ubutumire', 'Ubutumire butararebwa', () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No pending invitations')),
+                    );
+                  }),
                 ]),
                 const SizedBox(height: 16),
                 _buildSection('Igenamiterere', [
-                  _buildMenuItem(Icons.person_outline, 'Umwirondoro', 'Hindura amakuru yawe', () {}),
-                  _buildMenuItem(Icons.lock_outline, 'Umutekano', 'PIN n\'uburyo bwo gufungura', () {}),
+                  _buildMenuItem(Icons.person_outline, 'Umwirondoro', 'Hindura amakuru yawe', () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const EditProfileScreen()));
+                  }),
+                  _buildMenuItem(Icons.lock_outline, 'Umutekano', 'PIN n\'uburyo bwo gufungura', () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SecuritySettingsScreen()));
+                  }),
                   _buildMenuItem(Icons.notifications_outlined, 'Integuza', 'Igenamiterere ry\'integuza', () => context.push('/notifications')),
                   _buildMenuItem(Icons.language, 'Ururimi', 'Ikinyarwanda', () => context.push('/settings')),
                 ]),
                 const SizedBox(height: 16),
                 _buildSection('Ubufasha', [
-                  _buildMenuItem(Icons.help_outline, 'Ubufasha', 'Ibibazo bikunze kubazwa', () {}),
-                  _buildMenuItem(Icons.info_outline, 'Ibijyanye natwe', 'Verisiyo 2.1.0', () {}),
+                  _buildMenuItem(Icons.help_outline, 'Ubufasha', 'Ibibazo bikunze kubazwa', () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpCenterScreen()));
+                  }),
+                  _buildMenuItem(Icons.info_outline, 'Ibijyanye natwe', 'Verisiyo 2.1.0', () {
+                    showAboutDialog(
+                      context: context,
+                      applicationName: 'E-Kimina Rwanda',
+                      applicationVersion: '2.1.0',
+                      applicationIcon: const Icon(Icons.account_balance_wallet, size: 48, color: Color(0xFF00A86B)),
+                      children: [
+                        const Text('A community savings and loans platform for Rwanda'),
+                      ],
+                    );
+                  }),
                 ]),
                 const SizedBox(height: 32),
                 Padding(

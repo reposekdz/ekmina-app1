@@ -513,23 +513,144 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showContactSupport() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening contact support...')));
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.support_agent, size: 64, color: Color(0xFF00A86B)),
+              const SizedBox(height: 16),
+              const Text('Contact Support', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('Email: support@ekimina.rw', textAlign: TextAlign.center),
+              const Text('Phone: +250 788 123 456', textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showReportProblem() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening problem report form...')));
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Report a Problem', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              const TextField(
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'Describe the problem',
+                  hintText: 'Tell us what went wrong...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Problem report submitted')),
+                    );
+                  },
+                  child: const Text('Submit'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showRateApp() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening app store...')));
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Rate E-Kimina'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('How would you rate your experience?'),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) => IconButton(
+                icon: const Icon(Icons.star, color: Color(0xFFFFB800)),
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Thanks for rating ${index + 1} stars!')),
+                  );
+                },
+              )),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showTerms() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening terms of service...')));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: const Text('Terms of Service')),
+          body: const SingleChildScrollView(
+            padding: EdgeInsets.all(16),
+            child: Text('Terms of Service content would go here...'),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showPrivacy() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opening privacy policy...')));
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: const Text('Privacy Policy')),
+          body: const SingleChildScrollView(
+            padding: EdgeInsets.all(16),
+            child: Text('Privacy Policy content would go here...'),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showLicenses() {
@@ -537,7 +658,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _checkUpdates() {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Checking for updates...')));
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle, size: 64, color: Color(0xFF00A86B)),
+            const SizedBox(height: 16),
+            const Text('You\'re up to date!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('You have the latest version of E-Kimina'),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showDeleteAccountDialog() {
@@ -546,11 +687,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete Account?'),
-        content: const Text('This action cannot be undone. All your data will be permanently deleted.'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('This action cannot be undone. All your data will be permanently deleted:'),
+            const SizedBox(height: 12),
+            const Text('• All group memberships'),
+            const Text('• Transaction history'),
+            const Text('• Wallet balance'),
+            const Text('• Personal information'),
+            const SizedBox(height: 12),
+            const Text('Are you sure you want to continue?', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  title: const Text('Enter PIN to Confirm'),
+                  content: const TextField(
+                    obscureText: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    decoration: InputDecoration(
+                      labelText: 'PIN',
+                      hintText: 'Enter your 4-digit PIN',
+                    ),
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Account deletion request submitted')),
+                        );
+                      },
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+            },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
           ),
@@ -570,24 +755,59 @@ class HelpCenterScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildFAQItem('How do I create a group?', 'Go to Groups tab and tap the + button...'),
-          _buildFAQItem('How do I apply for a loan?', 'Navigate to your group and tap Request Loan...'),
-          _buildFAQItem('How do I deposit money?', 'Go to Wallet and tap Deposit...'),
-          _buildFAQItem('What are guarantors?', 'Guarantors are group members who vouch for your loan...'),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF00A86B).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.help_outline, color: Color(0xFF00A86B), size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Need Help?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('Find answers to common questions', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildFAQItem('How do I create a group?', 'Go to Groups tab and tap the + button. Fill in the group details including name, location, and financial rules. You need to have sufficient balance in your wallet to create a group.'),
+          _buildFAQItem('How do I apply for a loan?', 'Navigate to your group and tap Request Loan. Select the loan amount, duration, and choose guarantors. Your loan eligibility is based on your shares in the group.'),
+          _buildFAQItem('How do I deposit money?', 'Go to Wallet and tap Deposit. Enter the amount and select your payment method (MTN MoMo or Airtel Money). Follow the prompts to complete the transaction.'),
+          _buildFAQItem('What are guarantors?', 'Guarantors are group members who vouch for your loan. They agree to help repay the loan if you are unable to. Most groups require 2-3 guarantors for loan approval.'),
+          _buildFAQItem('How do shares work?', 'Shares represent your ownership in the group. Each share has a fixed value set by the group. Your total shares determine your loan eligibility and dividend distribution.'),
+          _buildFAQItem('What happens if I miss a payment?', 'Missing a payment may result in penalties as defined by your group rules. It can also affect your ability to request future loans. Contact your group admin if you anticipate payment difficulties.'),
+          _buildFAQItem('How do I invite members to my group?', 'Go to your group details, tap the menu icon, and select "Invite Members". You can share an invitation link or code with potential members.'),
+          _buildFAQItem('Can I be in multiple groups?', 'Yes! You can join multiple groups. Each group operates independently with its own rules, shares, and financial activities.'),
         ],
       ),
     );
   }
 
   Widget _buildFAQItem(String question, String answer) {
-    return ExpansionTile(
-      title: Text(question, style: const TextStyle(fontWeight: FontWeight.w600)),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(answer, style: const TextStyle(color: Colors.grey)),
-        ),
-      ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: ExpansionTile(
+        title: Text(question, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(answer, style: TextStyle(color: Colors.grey[700], height: 1.5)),
+          ),
+        ],
+      ),
     );
   }
 }
